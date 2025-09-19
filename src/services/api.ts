@@ -3,7 +3,7 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 
 const api = axios.create({
-  baseURL: 'https://service-api-oz84.onrender.com/api/v1',
+  baseURL: 'http://127.0.0.1:8000/api/v1',
 });
 
 api.interceptors.request.use((config) => {

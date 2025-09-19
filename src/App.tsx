@@ -1,10 +1,9 @@
 // src/App.tsx (MODIFICADO PARA USAR AdminLayout)
 import './index.css'
 
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext'; // Ajusta ruta
 import { AuthProvider } from './context/AuthContext';   // Ajusta ruta
-import { EficienciaProvider } from './context/EficienciaContext'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 
@@ -22,19 +21,6 @@ import UnauthorizedPage from './pages/UnauthorizedPage'; // Ajusta ruta
 
 // Páginas Principales/Normales (Importaciones sin cambios)
 import Home from './pages/Home'; // Ajusta ruta
-import RecursosHumanos from './pages/RecursosHumanos'; // Ajusta ruta
-
-import Planeamiento from './pages/Planeamiento'; // Ajusta ruta
-import Ontime from './pages/planeamiento/Ontime'; // Ajusta ruta
-
-import LeadTime from './pages/planeamiento/LeadTime'; // Ajusta ruta
-import Textil from './pages/Textil'; // Ajusta ruta
-import Manufactura from './pages/Manufactura'; // Ajusta ruta
-import Corte from './pages/manufactura/Corte'; // Ajusta ruta
-import Costura from './pages/manufactura/Costura'; // Ajusta ruta
-
-import Acabado from './pages/manufactura/Acabado'; // Ajusta ruta
-import Administracion from './pages/Administracion'; // Ajusta ruta
 
 // Páginas de Administración
 import UserManagementPage from './pages/admin/UserManagementPage'; // Ajusta ruta
@@ -43,18 +29,6 @@ import AreaManagementPage from './pages/admin/AreaManagementPage';
 import MenuManagementPage from './pages/admin/MenuManagementPage';
 // ... (importa otras páginas de admin si las tienes) ...
 
-import EficienciaDashboardPage from './pages/manufactura/costura/EficienciaDashboardPage';
-import TrabajadorListPage from './pages/manufactura/costura/TrabajadorListPage';
-import TrabajadorDetailPage from './pages/manufactura/costura/TrabajadorDetailPage';
-
-import CuentasCobrarPagarPage from './pages/administracion/CuentasCobrarPagarPage';
-
-// Componente intermedio para agrupar rutas de eficiencia de costura
-const CosturaEficienciaLayout = () => (
-  <EficienciaProvider>
-    <Outlet /> {/* Las rutas anidadas se renderizarán aquí */}
-  </EficienciaProvider>
-);
 
 const queryClient = new QueryClient();
 
@@ -78,40 +52,8 @@ function App() {
                   <Route index element={<Navigate to="/home" replace />} />
 
                   {/* Rutas accesibles para cualquier usuario autenticado */}
-                  <Route path="home" element={<Home />} />
-                  <Route path="recursos-humanos">
-                    <Route index element={<RecursosHumanos />} />
-                    
-                  </Route>
-                  <Route path="planeamiento">
-                    <Route index element={<Planeamiento />} />
-                    <Route path="ontime" element={<Ontime />} />
-                    
-                    <Route path="leadtime" element={<LeadTime />} />
-                  </Route>
-                  <Route path="textil" element={<Textil />} />
-                  <Route path="manufactura">
-                    <Route index element={<Manufactura />} />
-                    <Route path="corte" element={<Corte />} />
-
-                    <Route path="costura" element={<CosturaEficienciaLayout />}>
-                      <Route index element={<Costura />} />
-                      
-                      <Route path="dashboard_eficiencia" element={<EficienciaDashboardPage />} />
-                        {/* --- NUEVAS RUTAS PARA REPORTE DE TRABAJADORES --- */}
-                        {/* Estas rutas estarán bajo /manufactura/costura/ */}
-                        <Route path="trabajadores" element={<TrabajadorListPage />} />
-                        <Route path="trabajadores/:codigoTrabajador" element={<TrabajadorDetailPage />} />
-                        {/* --- FIN DE NUEVAS RUTAS --- */}
-                    </Route>
-                    <Route path="acabado" element={<Acabado />} />
-                  </Route>
+                  <Route path="home" element={<Home />} />                  
                   {/* Si /administracion es una página normal, va aquí */}
-                  <Route path="administracion">
-                    <Route index element={<Administracion />} />
-                    <Route path="cuentas-cobrar-pagar" element={<CuentasCobrarPagarPage />} />
-                    {/* Aquí puedes agregar más subrutas de administración en el futuro */}
-                  </Route>
 
                   {/* Catch-all DENTRO de MainLayout: redirige a /home si la ruta no existe */}
                   <Route path="*" element={<Navigate to="/home" replace />} />
