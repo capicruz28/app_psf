@@ -340,7 +340,7 @@ const UserManagementPage: React.FC = () => {
 
   // --- Renderizado ---
   return (
-    <div className="container mx-auto p-4">
+    <div className="w-full">
       {/* ... (Título, Barra de Búsqueda y Acciones - sin cambios) ... */}
       <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Gestión de Usuarios</h2>
 

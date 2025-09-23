@@ -267,7 +267,7 @@ const RoleManagementPage: React.FC = () => {
 
   // --- Renderizado ---
   return (
-    <div className="container mx-auto p-4 md:p-6">
+    <div className="w-full">
       <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
         Gestión de Roles
       </h1>

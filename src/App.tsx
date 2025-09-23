@@ -28,7 +28,8 @@ import RoleManagementPage from './pages/admin/RoleManagementPage'; // Ajusta rut
 import AreaManagementPage from './pages/admin/AreaManagementPage';
 import MenuManagementPage from './pages/admin/MenuManagementPage';
 // ... (importa otras páginas de admin si las tienes) ...
-
+import AutorizacionPage from './pages/AutorizacionPage';
+import FinalizarTareoPage from './pages/FinalizarTareoPage';
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,8 @@ function App() {
                   {/* Rutas accesibles para cualquier usuario autenticado */}
                   <Route path="home" element={<Home />} />                  
                   {/* Si /administracion es una página normal, va aquí */}
+                  <Route path="finalizartareo" element={<FinalizarTareoPage />} />
+                  <Route path="autorizacion" element={<AutorizacionPage />} />
 
                   {/* Catch-all DENTRO de MainLayout: redirige a /home si la ruta no existe */}
                   <Route path="*" element={<Navigate to="/home" replace />} />

@@ -1,24 +1,23 @@
-// src/components/layout/AdminLayout.tsx (NUEVO ARCHIVO)
-
-import React from 'react';
-import { Outlet } from 'react-router-dom';
-import AdminSidebar from '../admin/AdminSidebar'; // Ajusta la ruta si es necesario
+import React from "react";
+import { Outlet } from "react-router-dom";
+import AdminSidebar from "../admin/AdminSidebar"; 
+import LayoutWrapper from "../../common/LayoutWrapper";
 
 const AdminLayout: React.FC = () => {
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-      {/* Sidebar de Administración */}
+    <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
+      {/* Sidebar de administración */}
       <AdminSidebar />
 
-      {/* Área de Contenido Principal */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Podrías añadir un Header específico para Admin aquí si lo necesitas */}
+      {/* Área principal */}
+      <main className="flex-1 flex flex-col bg-gray-100 dark:bg-gray-900 min-h-screen">
+        {/* Si después quieres un header especial para admin, lo agregas aquí */}
         {/* <AdminHeader /> */}
 
-        {/* Contenido de la página específica (inyectado por Outlet) */}
-        <div className="flex-1 overflow-x-hidden overflow-y-auto p-6">
-          <Outlet /> {/* Aquí se renderizarán UserManagementPage, RoleManagementPage, etc. */}
-        </div>
+        {/* Contenido */}
+        <LayoutWrapper>
+          <Outlet />
+        </LayoutWrapper>
       </main>
     </div>
   );

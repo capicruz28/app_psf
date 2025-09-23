@@ -82,6 +82,21 @@ module.exports = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
+      fontSize: {
+        'table-header': ['0.875rem', { 
+          lineHeight: '1.25rem', 
+          fontWeight: '600' 
+        }],
+        'table-cell': ['0.875rem', { 
+          lineHeight: '1.25rem' 
+        }],
+        'table-detail': ['0.75rem', { 
+          lineHeight: '1rem' 
+        }],
+        'table-sm': ['0.75rem', { 
+          lineHeight: '1rem' 
+        }],
+      },
     },
   },
   plugins: [

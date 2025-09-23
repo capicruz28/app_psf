@@ -30,7 +30,7 @@ const Header = () => {
     <header className="bg-white dark:bg-gray-800 shadow-sm h-16 w-full">
       <div className="h-full px-4 flex justify-between items-center">
         <h1 className="text-xl font-semibold text-gray-800 dark:text-white">
-          Sistema Web de Gestión
+          Sistema Web Peruvian Sea Food
         </h1>
 
         <div className="relative" ref={menuRef}>
