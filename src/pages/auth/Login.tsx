@@ -12,7 +12,7 @@ import { LoginCredentials, UserData } from '../../types/auth.types'; // Ajusta l
 const Login: React.FC = () => { // Añadir tipo explícito React.FC
   const navigate = useNavigate();
   const location = useLocation();
-  const { setAuth } = useAuth(); // Obtener la función setAuth del contexto
+  const { setAuthFromLogin } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<LoginCredentials>({
@@ -41,7 +41,7 @@ const Login: React.FC = () => { // Añadir tipo explícito React.FC
 
       // 2. Actualizar el estado global de autenticación usando setAuth del contexto.
       //    setAuth guarda el token en cookie, actualiza el estado y devuelve UserData si tiene éxito.
-      const userData: UserData | null = setAuth(authResponse);
+      const userData: UserData | null = setAuthFromLogin(authResponse);
 
       // 3. Verificar si setAuth fue exitoso (userData no es null)
       if (userData) {
@@ -92,7 +92,7 @@ const Login: React.FC = () => { // Añadir tipo explícito React.FC
           <img
             src="/psf.png" // Asegúrate que esta imagen exista en public/
             alt="Ilustración de Login"
-            className="h-40 w-auto mx-auto mb-6" // Ajustado tamaño y margen
+            className="h-15 w-auto mx-auto mb-6" // Ajustado tamaño y margen
           />
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
             Iniciar Sesión

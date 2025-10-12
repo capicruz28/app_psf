@@ -30,6 +30,7 @@ import MenuManagementPage from './pages/admin/MenuManagementPage';
 // ... (importa otras páginas de admin si las tienes) ...
 import AutorizacionPage from './pages/AutorizacionPage';
 import FinalizarTareoPage from './pages/FinalizarTareoPage';
+import ReporteAutorizacionPage from './pages/ReporteAutorizacionPage';
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ function App() {
                   {/* Si /administracion es una página normal, va aquí */}
                   <Route path="finalizartareo" element={<FinalizarTareoPage />} />
                   <Route path="autorizacion" element={<AutorizacionPage />} />
+                  <Route path="reportedestajo" element={<ReporteAutorizacionPage />} />
 
                   {/* Catch-all DENTRO de MainLayout: redirige a /home si la ruta no existe */}
                   <Route path="*" element={<Navigate to="/home" replace />} />

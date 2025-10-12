@@ -7,7 +7,7 @@ import {
   PendienteAutorizacion,
   FinalizarTareoRequest,
 } from "../types/autorizacion.types";
-import { Loader, Clock, Save, Copy } from "lucide-react";
+import { Loader, Save, Copy, Search } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 function formatDateYYYYMMDD(dateStr?: string) {
@@ -16,6 +16,30 @@ function formatDateYYYYMMDD(dateStr?: string) {
   if (isNaN(date.getTime())) return "";
   return date.toISOString().slice(0, 10);
 }
+
+const sortData = (data: PendienteAutorizacion[]): PendienteAutorizacion[] => {
+  return [...data].sort((a, b) => {
+    // Ordenar por fecha_destajo
+    const dateA = new Date(a.fecha_destajo).getTime();
+    const dateB = new Date(b.fecha_destajo).getTime();
+    if (dateA !== dateB) return dateB - dateA;
+
+    // Ordenar por producto
+    const prodA = `${a.cod_producto} ${a.producto}`.toLowerCase();
+    const prodB = `${b.cod_producto} ${b.producto}`.toLowerCase();
+    if (prodA !== prodB) return prodB.localeCompare(prodA);
+
+    // Ordenar por proceso
+    const procA = `${a.cod_proceso} ${a.proceso}`.toLowerCase();
+    const procB = `${b.cod_proceso} ${b.proceso}`.toLowerCase();
+    if (procA !== procB) return procB.localeCompare(procA);
+
+    // Ordenar por subproceso
+    const subA = `${a.cod_subproceso || ''} ${a.subproceso || ''}`.toLowerCase();
+    const subB = `${b.cod_subproceso || ''} ${b.subproceso || ''}`.toLowerCase();
+    return subB.localeCompare(subA);
+  });
+};
 
 interface DetalleEditable {
   cod_trabajador: string;
@@ -30,6 +54,9 @@ const FinalizarTareoPage: React.FC = () => {
   const [selectedRow, setSelectedRow] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Estado para el buscador
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Formulario
   const [horaInicio, setHoraInicio] = useState("");
@@ -47,14 +74,11 @@ const FinalizarTareoPage: React.FC = () => {
 
   // Función para formatear hora automáticamente
   const formatearHora = (value: string): string => {
-    let val = value.replace(/\D/g, ""); // quitar caracteres no numéricos
-    if (val.length > 4) val = val.slice(0, 4); // máximo 4 dígitos
-
-    // Insertar : automáticamente → "1234" => "12:34"
+    let val = value.replace(/\D/g, "");
+    if (val.length > 4) val = val.slice(0, 4);
     if (val.length > 2) {
       val = val.slice(0, 2) + ":" + val.slice(2);
     }
-
     return val;
   };
 
@@ -66,17 +90,12 @@ const FinalizarTareoPage: React.FC = () => {
   // Función para extraer hora de datetime string del backend
   const extraerHora = (datetimeStr?: string): string => {
     if (!datetimeStr) return "";
-    
-    // Si viene como "1900-01-01T07:30:00" o similar
     if (datetimeStr.includes("T")) {
       return datetimeStr.split("T")[1].slice(0, 5);
     }
-    
-    // Si viene como "07:30:00" o "07:30"
     if (datetimeStr.includes(":")) {
       return datetimeStr.slice(0, 5);
     }
-    
     return "";
   };
 
@@ -91,11 +110,29 @@ const FinalizarTareoPage: React.FC = () => {
         map.set(key, item);
       }
     }
-    return Array.from(map.values());
+    // Aplicar el ordenamiento a los valores del map
+    return sortData(Array.from(map.values()));
   }, [pendientes]);
 
-  const totalPages = Math.ceil(cabeceras.length / itemsPerPage);
-  const paginatedCabeceras = cabeceras.slice(
+  // Filtrar cabeceras basado en el término de búsqueda
+  const filteredCabeceras = React.useMemo(() => {
+    if (!searchTerm.trim()) return cabeceras;
+    const term = searchTerm.toLowerCase().trim();
+    return cabeceras.filter(item => 
+      formatDateYYYYMMDD(item.fecha_destajo).toLowerCase().includes(term) ||
+      (item.cod_producto || "").toLowerCase().includes(term) ||
+      (item.producto || "").toLowerCase().includes(term) ||
+      (item.cod_proceso || "").toLowerCase().includes(term) ||
+      (item.proceso || "").toLowerCase().includes(term) ||
+      (item.cod_subproceso || "").toLowerCase().includes(term) ||
+      (item.subproceso || "").toLowerCase().includes(term) ||
+      (item.cliente || "").toLowerCase().includes(term) ||
+      (item.lote || "").toLowerCase().includes(term)
+    );
+  }, [cabeceras, searchTerm]);
+
+  const totalPages = Math.ceil(filteredCabeceras.length / itemsPerPage);
+  const paginatedCabeceras = filteredCabeceras.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -126,15 +163,34 @@ const FinalizarTareoPage: React.FC = () => {
     fetchData();
   }, []);
 
+  // Resetear página cuando cambie el término de búsqueda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  // Seleccionar automáticamente el primer registro cuando cambien las cabeceras filtradas
+  useEffect(() => {
+    if (filteredCabeceras.length > 0 && !selectedRow) {
+      const firstItem = filteredCabeceras[0];
+      setSelectedRow({
+        lote: firstItem.lote,
+        fecha_destajo: firstItem.fecha_destajo,
+        cod_proceso: firstItem.cod_proceso,
+        cod_subproceso: firstItem.cod_subproceso,
+        producto: firstItem.producto,
+        proceso: firstItem.proceso,
+        subproceso: firstItem.subproceso,
+        cliente: firstItem.cliente,
+      });
+    }
+  }, [filteredCabeceras, selectedRow]);
   // Inicializar valores desde el backend
   useEffect(() => {
     if (detalle.length > 0) {
       const first = detalle[0];
-
       setHoraInicio(extraerHora(first.hora_inicio));
       setHoraFin(extraerHora(first.hora_fin));
       setObservacion(first.observacion || "");
-
       setDetalleEditable(
         detalle.map((d) => ({
           cod_trabajador: d.cod_trabajador,
@@ -186,36 +242,24 @@ const FinalizarTareoPage: React.FC = () => {
 
   const handleGuardar = async () => {
     if (!selectedRow || detalleEditable.length === 0) return;
-    
-    // Validar horas antes de guardar
     if (horaInicio && !validarHora(horaInicio)) {
       toast.error("Hora de inicio inválida. Use formato HH:mm (00:00 - 23:59)");
       return;
     }
-    
     if (horaFin && !validarHora(horaFin)) {
       toast.error("Hora de fin inválida. Use formato HH:mm (00:00 - 23:59)");
       return;
     }
-
-    // Validación Horas/Kilos
     for (const item of detalleEditable) {
-      // No puede tener valores en ambos campos
       if (item.horas > 0 && item.kilos > 0) {
-        toast.error(
-          `El trabajador ${item.trabajador} tiene valores en Horas y Kilos a la vez.`
-        );
+        toast.error(`El trabajador ${item.trabajador} tiene valores en Horas y Kilos a la vez.`);
         return;
       }
-      // Debe tener al menos un valor
       if (item.horas === 0 && item.kilos === 0) {
-        toast.error(
-          `El trabajador ${item.trabajador} debe tener al menos un valor en Horas o Kilos.`
-        );
+        toast.error(`El trabajador ${item.trabajador} debe tener al menos un valor en Horas o Kilos.`);
         return;
       }
     }
-
     setIsSaving(true);
     try {
       for (const item of detalleEditable) {
@@ -234,10 +278,8 @@ const FinalizarTareoPage: React.FC = () => {
         };
         await finalizarTareo(req);
       }
-      // ✅ volver a cargar los pendientes después de grabar
       const data = await getPendientesAutorizacion();
       setPendientes(data);
-      
       toast.success("Tareo finalizado correctamente.");
       setSelectedRow(null);
     } catch {
@@ -249,12 +291,22 @@ const FinalizarTareoPage: React.FC = () => {
 
   return (
     <div className="w-full">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-          <Clock className="h-6 w-6 text-indigo-600" />
-          Registrar Destajo
-        </h2>
+      {/* Encabezado con buscador y botón alineados */}
+      <div className="flex justify-between items-center mb-4 gap-4">
+        <div className="flex-1 max-w-md">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Buscar en cualquier columna..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+            />
+          </div>
+        </div>
         <button
           onClick={handleGuardar}
           disabled={isSaving}
@@ -298,11 +350,20 @@ const FinalizarTareoPage: React.FC = () => {
                       selectedRow?.fecha_destajo === item.fecha_destajo &&
                       selectedRow?.cod_proceso === item.cod_proceso &&
                       (selectedRow?.cod_subproceso || "") === (item.cod_subproceso || "")
-                        ? "bg-blue-50 dark:bg-blue-900/30"
+                        ? "bg-indigo-100 dark:bg-indigo-900/50 border-l-4 border-indigo-500"
                         : ""
                     }`}
                   >
-                    <td className="px-2 py-1 text-table-cell">{formatDateYYYYMMDD(item.fecha_destajo)}</td>
+                    <td className={`px-2 py-1 text-table-cell ${
+                      selectedRow?.lote === item.lote &&
+                      selectedRow?.fecha_destajo === item.fecha_destajo &&
+                      selectedRow?.cod_proceso === item.cod_proceso &&
+                      (selectedRow?.cod_subproceso || "") === (item.cod_subproceso || "")
+                        ? "bg-indigo-100 dark:bg-indigo-900/50 border-l-4 border-indigo-500"
+                        : ""
+                    }`}>
+                      {formatDateYYYYMMDD(item.fecha_destajo)}
+                    </td>
                     <td className="px-2 py-1 text-table-cell">{item.cod_producto} {item.producto}</td>
                     <td className="px-2 py-1 text-table-cell">{item.cod_proceso} {item.proceso}</td>
                     <td className="px-2 py-1 text-table-cell">{item.cod_subproceso} {item.subproceso}</td>
@@ -313,7 +374,7 @@ const FinalizarTareoPage: React.FC = () => {
               ) : (
                 <tr>
                   <td colSpan={6} className="px-3 py-4 text-center text-gray-500 text-table-cell">
-                    No hay registros disponibles
+                    {searchTerm ? "No se encontraron registros que coincidan con la búsqueda." : "No hay registros disponibles"}
                   </td>
                 </tr>
               )}
@@ -323,7 +384,7 @@ const FinalizarTareoPage: React.FC = () => {
       )}
 
       {/* Paginación */}
-      {cabeceras.length > 0 && (
+      {filteredCabeceras.length > 0 && (
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-700 dark:text-gray-300">Mostrar</span>
@@ -340,6 +401,11 @@ const FinalizarTareoPage: React.FC = () => {
               <option value={50}>50</option>
             </select>
             <span className="text-sm text-gray-700 dark:text-gray-300">registros</span>
+            {searchTerm && (
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                (mostrando {filteredCabeceras.length} de {cabeceras.length} registros filtrados)
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <button
@@ -366,12 +432,11 @@ const FinalizarTareoPage: React.FC = () => {
       {/* Formulario + detalle */}
       {selectedRow && (
         <div className="grid grid-cols-1 md:grid-cols-10 gap-4">
-          {/* Columna izquierda (formulario) */}
           <div className="col-span-3 border rounded-lg p-4 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 flex flex-col justify-between">
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm text-gray-700 dark:text-gray-300">Hora Inicio</label>
+                  <label className="text-sm text-gray-700 dark:text-gray-300 font-semibold">Hora Inicio</label>
                   <input
                     type="text"
                     value={horaInicio}
@@ -395,7 +460,7 @@ const FinalizarTareoPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-700 dark:text-gray-300">Hora Fin</label>
+                  <label className="text-sm text-gray-700 dark:text-gray-300 font-semibold">Hora Fin</label>
                   <input
                     type="text"
                     value={horaFin}
@@ -421,7 +486,7 @@ const FinalizarTareoPage: React.FC = () => {
               </div>
               <div className="grid grid-cols-3 gap-2 items-center">
                 <div>
-                  <label className="text-sm text-gray-700 dark:text-gray-300">Tipo</label>
+                  <label className="text-sm text-gray-700 dark:text-gray-300 font-semibold">Tipo</label>
                   <select
                     value={tipoValor}
                     onChange={(e) => setTipoValor(e.target.value as any)}
@@ -432,7 +497,7 @@ const FinalizarTareoPage: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-700 dark:text-gray-300">Valor</label>
+                  <label className="text-sm text-gray-700 dark:text-gray-300 font-semibold">Valor</label>
                   <input
                     type="number"
                     min="0"
@@ -454,12 +519,12 @@ const FinalizarTareoPage: React.FC = () => {
                       onChange={(e) => setProrratear(e.target.checked)}
                       className="form-checkbox h-4 w-4 text-indigo-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-indigo-500"
                     />
-                    Prorratear
+                    <label className="text-sm text-gray-700 dark:text-gray-300 font-semibold">Prorratear</label>
                   </label>
                 </div>
               </div>
               <div>
-                <label className="text-sm text-gray-700 dark:text-gray-300">Observación General</label>
+                <label className="text-sm text-gray-700 dark:text-gray-300 font-semibold">Observación General</label>
                 <textarea
                   rows={2}
                   value={observacion}
@@ -470,6 +535,7 @@ const FinalizarTareoPage: React.FC = () => {
                   }}
                   className="border rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Ingrese observación..."
+                  style={{ textTransform: 'uppercase' }}
                 />
               </div>
             </div>
@@ -483,12 +549,10 @@ const FinalizarTareoPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Columna derecha (detalle editable) */}
           <div className="col-span-7">
-            {/* 🆕 Encabezado del detalle */}
             <div className="bg-indigo-600 text-white px-4 py-2 rounded-t-lg">
               <h3 className="font-semibold text-sm">
-                Detalle seleccionado → Fecha: {formatDateYYYYMMDD(selectedRow.fecha_destajo)} | 
+                Detalle seleccionado → Fecha Destajo: {formatDateYYYYMMDD(selectedRow.fecha_destajo)} | 
                 Lote: {selectedRow.lote} | 
                 Proceso: {selectedRow.proceso}
                 {selectedRow.subproceso && ` | Subproceso: ${selectedRow.subproceso}`}
@@ -496,7 +560,6 @@ const FinalizarTareoPage: React.FC = () => {
               </h3>
             </div>
 
-            {/* Tabla detalle */}
             <div className="shadow-md rounded-b-lg border border-gray-200 dark:border-gray-700 overflow-x-auto max-h-80 overflow-y-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
@@ -513,8 +576,6 @@ const FinalizarTareoPage: React.FC = () => {
                     <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                       <td className="px-2 py-1 text-table-cell">{d.cod_trabajador}</td>
                       <td className="px-2 py-1 text-table-cell">{d.trabajador}</td>
-                      
-                      {/* Horas */}
                       <td className="px-2 py-1">
                         <input
                           type="number"
@@ -530,9 +591,7 @@ const FinalizarTareoPage: React.FC = () => {
                           onBlur={() =>
                             setDetalleEditable((prev) =>
                               prev.map((row, idx) =>
-                                idx === i
-                                  ? { ...row, kilos: row.horas > 0 ? 0 : row.kilos }
-                                  : row
+                                idx === i ? { ...row, kilos: row.horas > 0 ? 0 : row.kilos } : row
                               )
                             )
                           }
@@ -540,9 +599,7 @@ const FinalizarTareoPage: React.FC = () => {
                             if (e.key === "Enter") {
                               setDetalleEditable((prev) =>
                                 prev.map((row, idx) =>
-                                  idx === i
-                                    ? { ...row, kilos: row.horas > 0 ? 0 : row.kilos }
-                                    : row
+                                  idx === i ? { ...row, kilos: row.horas > 0 ? 0 : row.kilos } : row
                                 )
                               );
                             }
@@ -554,8 +611,6 @@ const FinalizarTareoPage: React.FC = () => {
                           className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         />
                       </td>
-                      
-                      {/* Kilos */}
                       <td className="px-2 py-1">
                         <input
                           type="number"
@@ -571,9 +626,7 @@ const FinalizarTareoPage: React.FC = () => {
                           onBlur={() =>
                             setDetalleEditable((prev) =>
                               prev.map((row, idx) =>
-                                idx === i
-                                  ? { ...row, horas: row.kilos > 0 ? 0 : row.horas }
-                                  : row
+                                idx === i ? { ...row, horas: row.kilos > 0 ? 0 : row.horas } : row
                               )
                             )
                           }
@@ -581,9 +634,7 @@ const FinalizarTareoPage: React.FC = () => {
                             if (e.key === "Enter") {
                               setDetalleEditable((prev) =>
                                 prev.map((row, idx) =>
-                                  idx === i
-                                    ? { ...row, horas: row.kilos > 0 ? 0 : row.horas }
-                                    : row
+                                  idx === i ? { ...row, horas: row.kilos > 0 ? 0 : row.horas } : row
                                 )
                               );
                             }
@@ -595,7 +646,6 @@ const FinalizarTareoPage: React.FC = () => {
                           className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         />
                       </td>
-                      
                       <td className="px-2 py-1">
                         <input
                           type="text"
@@ -613,6 +663,7 @@ const FinalizarTareoPage: React.FC = () => {
                           }}
                           className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                           placeholder="Observación..."
+                          style={{ textTransform: 'uppercase' }}
                         />
                       </td>
                     </tr>

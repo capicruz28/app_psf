@@ -17,7 +17,8 @@ const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
 
     // 3. Realizar la solicitud POST con los params como data
     //    Axios enviará esto como application/x-www-form-urlencoded
-    const { data } = await api.post<AuthResponse>('/auth/login', params);
+    // ✅ CAMBIO: Agregado / al final
+    const { data } = await api.post<AuthResponse>('/auth/login/', params);
 
     // 4. La gestión de la cookie/token se hace en AuthContext/componente,
     //    así que aquí solo devolvemos la respuesta completa.
@@ -40,9 +41,10 @@ const getCurrentUserProfile = async (): Promise<UserData | null> => {
   }
 
   try {
-    console.log('getCurrentUserProfile: Attempting to fetch profile from /usuarios/me');
+    console.log('getCurrentUserProfile: Attempting to fetch profile from /usuarios/me/');
     // Asegúrate que 'api' tenga interceptor para añadir 'Authorization: Bearer <token>'
-    const response = await api.get<UserData>('/usuarios/me'); // Ajusta la ruta si es diferente
+    // ✅ CAMBIO: Agregado / al final
+    const response = await api.get<UserData>('/usuarios/me/'); // Ajusta la ruta si es diferente
 
     console.log('getCurrentUserProfile: Profile fetched successfully:', response.data);
     return response.data;
@@ -63,7 +65,7 @@ const logout = () => {
     console.log('authService.logout: Removing token cookie.');
     Cookies.remove('token');
     // Opcional: Llamar a endpoint de logout del backend
-    // await api.post('/auth/logout');
+    // await api.post('/auth/logout/');
 };
 
 // Exportar el objeto del servicio con todas las funciones

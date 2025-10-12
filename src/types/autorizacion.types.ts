@@ -16,11 +16,13 @@ export interface PendienteAutorizacion {
   kilos: number;
   tarifa: number;
   importe_total: number;
-  estado_autorizado: number;
+  estado_autorizado: string;
   hora_inicio?: string;           // formato esperado: "HH:mm" o "HH:mm:ss"
   hora_fin?: string;              // formato esperado: "HH:mm" o "HH:mm:ss"
   observacion?: string;           // observación general
   detalle_observacion?: string;   // observación específica de trabajador
+  fecha_autorizacion: string;
+  observacion_autorizacion?: string;         
 }
 
 export interface AutorizacionUpdate {
@@ -28,7 +30,8 @@ export interface AutorizacionUpdate {
   fecha_destajo: string;
   cod_proceso: string;
   cod_subproceso?: string;
-  nuevo_estado: number;
+  nuevo_estado: string;
+  observacion_autorizacion: string;
 }
 
 export interface AutorizacionResponse {
@@ -37,7 +40,8 @@ export interface AutorizacionResponse {
   fecha_destajo: string;
   cod_proceso: string;
   cod_subproceso?: string;
-  nuevo_estado: number;
+  nuevo_estado: string;
+  observacion_autorizacion: string;
 }
 
 export interface AutorizacionMultipleResponse {

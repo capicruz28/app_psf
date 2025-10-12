@@ -9,7 +9,7 @@ import { Rol, PaginatedRolResponse, RolCreateData, RolUpdateData } from '../../t
 import { Loader, Edit3, Plus, Search, EyeOff, Eye, KeyRound } from 'lucide-react'; // <--- Añadido KeyRound
 
 // --- Importar el gestor de permisos (LO CREAREMOS DESPUÉS) ---
-import RolePermissionsManager from '@/pages/admin/RolePermissionsManager'; // Descomentar cuando exista
+import RolePermissionsManager from './RolePermissionsManager'; // Descomentar cuando exista
 
 // --- Hook useDebounce ---
 function useDebounce(value: string, delay: number): string {
