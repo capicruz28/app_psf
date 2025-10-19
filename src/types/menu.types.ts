@@ -3,7 +3,7 @@
 // --- Tipos para el Sidebar (Existentes) ---
 
 export interface SidebarMenuItem { // Renombrado para claridad (antes MenuItem)
-  menu_id: number;
+  menu_id: number | string;
   nombre: string;
   icono: string | null; // Hacer opcional si puede ser null
   ruta: string | null; // Hacer opcional si puede ser null
@@ -14,6 +14,7 @@ export interface SidebarMenuItem { // Renombrado para claridad (antes MenuItem)
   area_id: number | null;
   area_nombre: string | null;
   children: SidebarMenuItem[]; // Usa el tipo renombrado recursivamente
+  isSeparator?: boolean; // <--- AÑADIDO: Para los títulos en el menú estático
 }
 
 export interface SidebarMenuResponse { // Renombrado para claridad (antes MenuResponse)
@@ -32,6 +33,7 @@ export interface PopoverContentProps {
   setNestedPopover: (path: string | null) => void;
   handleNavigate: (path: string) => void;
   currentPath: string;
+  getItemIdentifier: (item: SidebarMenuItem) => string; // Añadido para tipado correcto
 }
 
 // --- Tipos NUEVOS para la Gestión de Menús ---

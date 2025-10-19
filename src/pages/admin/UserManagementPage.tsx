@@ -345,9 +345,7 @@ const UserManagementPage: React.FC = () => {
 
   // UI
   return (
-    <div className="w-full">
-      <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Gestión de Usuarios</h2>
-
+    <div className="w-full">      
       {/* Barra de Búsqueda y Acciones */}
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div className="relative w-full sm:w-1/3">

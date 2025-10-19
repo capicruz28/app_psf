@@ -245,10 +245,7 @@ const AreaManagementPage: React.FC = () => {
 
   // --- Renderizado ---
   return (
-    <div className="w-full">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
-        Gestión de Áreas {/* <--- Cambiado título */}
-      </h1>
+    <div className="w-full">      
 
       {/* Barra de Búsqueda y Acciones */}
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">

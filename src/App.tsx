@@ -12,8 +12,9 @@ import { HTML5Backend } from 'react-dnd-html5-backend'; // <<< Importa el Backen
 
 // Layouts y Protección
 import ProtectedRoute from './components/ProtectedRoute'; // Ajusta ruta
-import MainLayout from './components/layout/MainLayout'; // Ajusta ruta
-import AdminLayout from './components/layout/AdminLayout'; // <-- IMPORTAR NUEVO LAYOUT
+//import MainLayout from './components/layout/MainLayout'; // Ajusta ruta
+//import AdminLayout from './components/layout/AdminLayout'; // <-- IMPORTAR NUEVO LAYOUT
+import NewLayout from './components/layout/NewLayout'; // <-- AÑADIR NUEVO LAYOUT
 
 // Páginas Públicas
 import Login from './pages/auth/Login'; // Ajusta ruta
@@ -49,7 +50,7 @@ function App() {
               {/* Protección base: Requiere estar autenticado */}
               <Route element={<ProtectedRoute />}>
                 {/* Layout principal para usuarios autenticados */}
-                <Route path="/" element={<MainLayout />}>
+                <Route path="/" element={<NewLayout  />}>
                   {/* Redirección del índice a la página principal */}
                   <Route index element={<Navigate to="/home" replace />} />
 
@@ -74,7 +75,7 @@ function App() {
                   // Protección específica: Requiere rol 'admin' para acceder a CUALQUIER ruta /admin/*
                   <ProtectedRoute requiredRole="admin">
                     <DndProvider backend={HTML5Backend}>
-                    <AdminLayout /> {/* Usar el layout específico de admin */}
+                    <NewLayout  /> {/* Usar el layout específico de admin */}
                     </DndProvider>
                   </ProtectedRoute>
                 }

@@ -363,8 +363,7 @@ const MenuManagementPage: React.FC = () => {
   // --- ************************************************** ---
 
   return (
-      <div className="p-4 md:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <h1 className="text-2xl font-semibold mb-6 text-gray-800 dark:text-gray-200">Gestión de Menús por Área</h1>
+      <div className="p-4 md:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">        
 
         <div className="mb-6 max-w-xs">
           <label htmlFor="area-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Seleccionar Área</label>
