@@ -12,10 +12,10 @@ import {
 
 const BASE_URL = '/autorizacion';
 
-export const getPendientesAutorizacion = async (): Promise<PendienteAutorizacion[]> => {
+export const getPendientesAutorizacion = async (codigo_trabajador_externo: string): Promise<PendienteAutorizacion[]> => {
   try {
     // ✅ CAMBIO: Ya tiene / al final - OK
-    const response = await api.get<PendienteAutorizacion[]>(`${BASE_URL}/pendientes/`);
+    const response = await api.get<PendienteAutorizacion[]>(`${BASE_URL}/pendientes/${codigo_trabajador_externo}/`);
     return response.data;
   } catch (error) {
     console.error('Error fetching pendientes de autorización:', error);
@@ -78,13 +78,14 @@ export const finalizarTareo = async (
 
 export const getReporteAutorizacion = async (
   fecha_inicio: string,
-  fecha_fin: string
+  fecha_fin: string,
+  codigo_trabajador_externo?: string
 ): Promise<PendienteAutorizacion[]> => {
   try {
     // ✅ CAMBIO: Ya tiene / al final - OK
     const response = await api.post<PendienteAutorizacion[]>(
       `${BASE_URL}/reporte/`,
-      { fecha_inicio, fecha_fin }
+      { fecha_inicio, fecha_fin, codigo_trabajador_externo }
     );
     return response.data;
   } catch (error) {

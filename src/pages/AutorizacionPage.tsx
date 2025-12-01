@@ -7,8 +7,9 @@ import {
   PendienteAutorizacion,
   AutorizacionUpdate,
 } from "../types/autorizacion.types";
-import { Loader, CheckSquare, X, Search } from "lucide-react";
+import { Loader, CheckSquare, X, Search, ChevronDown, ChevronUp, Package } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { useAuth } from '../context/AuthContext';
 
 function formatDateYYYYMMDD(dateStr?: string) {
   if (!dateStr) return "";
@@ -42,6 +43,7 @@ const sortData = (data: PendienteAutorizacion[]): PendienteAutorizacion[] => {
 };
 
 const AutorizacionPage: React.FC = () => {
+  const { auth } = useAuth();
   const [pendientes, setPendientes] = useState<PendienteAutorizacion[]>([]);
   const [selectedLotes, setSelectedLotes] = useState<Set<string>>(new Set());
   const [selectedRow, setSelectedRow] = useState<{
@@ -58,11 +60,11 @@ const AutorizacionPage: React.FC = () => {
   const [isAuthorizing, setIsAuthorizing] = useState<boolean>(false);
   const [isRejecting, setIsRejecting] = useState<boolean>(false);
   
-  // Estados para modales de confirmación
+  // Estados para modales de confirmación DESKTOP
   const [showAuthorizeModal, setShowAuthorizeModal] = useState<boolean>(false);
   const [showRejectModal, setShowRejectModal] = useState<boolean>(false);
 
-  // Estados para el rechazo con observación
+  // Estados para el rechazo con observación DESKTOP
   const [showRejectObservationModal, setShowRejectObservationModal] = useState<boolean>(false);
   const [rejectObservation, setRejectObservation] = useState<string>("");
 
@@ -75,6 +77,15 @@ const AutorizacionPage: React.FC = () => {
 
   // Estado para controlar si ya se mostró el toast de selección múltiple
   const [hasShownMultiSelectToast, setHasShownMultiSelectToast] = useState<boolean>(false);
+
+  // Estados para vista móvil
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [selectedItemMobile, setSelectedItemMobile] = useState<PendienteAutorizacion | null>(null);
+  
+  // Estados para modales MÓVIL
+  const [showRejectObservationModalMobile, setShowRejectObservationModalMobile] = useState<boolean>(false);
+  const [showRejectModalMobile, setShowRejectModalMobile] = useState<boolean>(false);
+  const [showAuthorizeModalMobile, setShowAuthorizeModalMobile] = useState<boolean>(false);
 
   // Agrupar cabeceras únicas
   const cabeceras = React.useMemo(() => {
@@ -130,7 +141,7 @@ const AutorizacionPage: React.FC = () => {
   const fetchPendientes = async () => {
     setLoading(true);
     try {
-      const data = await getPendientesAutorizacion();
+      const data = await getPendientesAutorizacion(auth.user?.codigo_trabajador_externo || "");
       setPendientes(data);
     } catch (err) {
       toast.error("Error al cargar pendientes de autorización.");
@@ -294,6 +305,67 @@ const AutorizacionPage: React.FC = () => {
     }
   };
 
+  // Funciones para móvil - acciones individuales
+  const handleAutorizarMovil = async (item: PendienteAutorizacion) => {
+    setIsAuthorizing(true);
+    try {
+      const payload: AutorizacionUpdate[] = [{
+        lote: item.lote,
+        fecha_destajo: item.fecha_destajo,
+        cod_proceso: item.cod_proceso,
+        cod_subproceso: item.cod_subproceso,
+        nuevo_estado: 'A',
+        observacion_autorizacion: "",
+      }];
+
+      const result = await autorizarMultipleProcesos(payload);
+      if (result.exitosos > 0) {
+        toast.success("Proceso autorizado correctamente.");
+      } else {
+        toast.error("No se pudo autorizar el proceso.");
+      }
+      await fetchPendientes();
+      setSelectedItemMobile(null);
+    } catch (err) {
+      toast.error("Error al autorizar el proceso.");
+      console.error(err);
+    } finally {
+      setIsAuthorizing(false);
+      setShowAuthorizeModalMobile(false);
+    }
+  };
+
+  const handleRechazarMovil = async (item: PendienteAutorizacion) => {
+    setIsRejecting(true);
+    try {
+      const payload: AutorizacionUpdate[] = [{
+        lote: item.lote,
+        fecha_destajo: item.fecha_destajo,
+        cod_proceso: item.cod_proceso,
+        cod_subproceso: item.cod_subproceso,
+        nuevo_estado: 'R',
+        observacion_autorizacion: rejectObservation,
+      }];
+
+      const result = await autorizarMultipleProcesos(payload);
+      if (result.exitosos > 0) {
+        toast.success("Proceso rechazado correctamente.");
+      } else {
+        toast.error("No se pudo rechazar el proceso.");
+      }
+      await fetchPendientes();
+      setSelectedItemMobile(null);
+      setRejectObservation("");
+    } catch (err) {
+      toast.error("Error al rechazar el proceso.");
+      console.error(err);
+    } finally {
+      setIsRejecting(false);
+      setShowRejectModalMobile(false);
+      setShowRejectObservationModalMobile(false);
+    }
+  };
+
   const openAuthorizeModal = () => {
     if (selectedLotes.size === 0) {
       toast.error("Seleccione al menos un registro.");
@@ -334,6 +406,53 @@ const AutorizacionPage: React.FC = () => {
     setShowRejectModal(true);
   };
 
+  // Funciones para móvil
+  const confirmRejectWithObservationMobile = () => {
+    if (!rejectObservation.trim()) {
+      toast.error("Debe ingresar un motivo de rechazo.");
+      return;
+    }
+    setShowRejectObservationModalMobile(false);
+    setShowRejectModalMobile(true);
+  };
+
+  const openAuthorizeModalMobile = (item: PendienteAutorizacion) => {
+    setSelectedItemMobile(item);
+    setShowAuthorizeModalMobile(true);
+  };
+
+  const openRejectModalMobile = (item: PendienteAutorizacion) => {
+    setSelectedItemMobile(item);
+    setShowRejectObservationModalMobile(true);
+  };
+
+  // Función para obtener el detalle de un item específico (para móvil)
+  const getDetalleForItem = (item: PendienteAutorizacion) => {
+    return pendientes.filter(
+      (p) =>
+        p.lote === item.lote &&
+        p.fecha_destajo === item.fecha_destajo &&
+        p.cod_proceso === item.cod_proceso &&
+        (p.cod_subproceso || "") === (item.cod_subproceso || "")
+    );
+  };
+
+  // Función para toggle de expansión de cards en móvil
+  const toggleCardExpansion = (key: string) => {
+    setExpandedCards(prev => {
+      const updated = new Set(prev);
+      updated.has(key) ? updated.delete(key) : updated.add(key);
+      return updated;
+    });
+  };
+
+  // Función para verificar si una fila está seleccionada
+  const isRowSelected = (item: PendienteAutorizacion) => 
+    selectedRow?.lote === item.lote &&
+    selectedRow?.fecha_destajo === item.fecha_destajo &&
+    selectedRow?.cod_proceso === item.cod_proceso &&
+    (selectedRow?.cod_subproceso || "") === (item.cod_subproceso || "");
+
   return (
     <div className="w-full">
       {/* Encabezado con buscador y botones alineados */}
@@ -354,8 +473,8 @@ const AutorizacionPage: React.FC = () => {
           </div>
         </div>
         
-        {/* Botones */}
-        <div className="flex gap-2">
+        {/* Botones - Solo visible en desktop */}
+        <div className="hidden md:flex gap-2">
           <button
             onClick={openRejectModal}
             disabled={isRejecting}
@@ -377,7 +496,7 @@ const AutorizacionPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal para ingresar motivo de rechazo */}
+      {/* Modal para ingresar motivo de rechazo - DESKTOP */}
       {showRejectObservationModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
@@ -415,7 +534,46 @@ const AutorizacionPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de confirmación para Autorizar */}
+      {/* Modal para ingresar motivo de rechazo - MÓVIL */}
+      {showRejectObservationModalMobile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Motivo de Rechazo
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-4 text-sm">
+              Debe ingresar un motivo para rechazar el registro seleccionado.
+            </p>
+            <textarea
+              value={rejectObservation}
+              onChange={(e) => setRejectObservation(e.target.value)}
+              placeholder="Ingrese el motivo del rechazo..."
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white text-sm"
+            />
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowRejectObservationModalMobile(false);
+                  setRejectObservation("");
+                  setSelectedItemMobile(null);
+                }}
+                className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmRejectWithObservationMobile}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
+              >
+                Continuar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación para Autorizar - DESKTOP */}
       {showAuthorizeModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
@@ -445,7 +603,50 @@ const AutorizacionPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de confirmación para Rechazar */}
+      {/* Modal de confirmación para Autorizar - MÓVIL */}
+      {showAuthorizeModalMobile && selectedItemMobile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Confirmar Autorización
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              ¿Está seguro que desea autorizar el proceso seleccionado?
+            </p>
+            <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md mb-4">
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Detalle del proceso:</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {selectedItemMobile.cod_producto} {selectedItemMobile.producto} - {selectedItemMobile.proceso}
+                {selectedItemMobile.subproceso && ` - ${selectedItemMobile.subproceso}`}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Lote: {selectedItemMobile.lote} - Fecha: {formatDateYYYYMMDD(selectedItemMobile.fecha_destajo)}
+              </p>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowAuthorizeModalMobile(false);
+                  setSelectedItemMobile(null);
+                }}
+                className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleAutorizarMovil(selectedItemMobile)}
+                disabled={isAuthorizing}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2 disabled:opacity-50"
+              >
+                {isAuthorizing && <Loader className="animate-spin h-4 w-4" />}
+                Confirmar Autorización
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación para Rechazar - DESKTOP */}
       {showRejectModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
@@ -482,6 +683,53 @@ const AutorizacionPage: React.FC = () => {
         </div>
       )}
 
+      {/* Modal de confirmación para Rechazar - MÓVIL */}
+      {showRejectModalMobile && selectedItemMobile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Confirmar Rechazo
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              ¿Está seguro que desea rechazar el proceso seleccionado?
+            </p>
+            <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md mb-4">
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Detalle del proceso:</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {selectedItemMobile.cod_producto} {selectedItemMobile.producto} - {selectedItemMobile.proceso}
+                {selectedItemMobile.subproceso && ` - ${selectedItemMobile.subproceso}`}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Lote: {selectedItemMobile.lote} - Fecha: {formatDateYYYYMMDD(selectedItemMobile.fecha_destajo)}
+              </p>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md mb-6">
+              <p className="text-sm text-gray-600 dark:text-gray-300 font-medium mb-2">Motivo del rechazo:</p>
+              <p className="text-sm text-gray-800 dark:text-gray-200">{rejectObservation}</p>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowRejectModalMobile(false);
+                  setShowRejectObservationModalMobile(true);
+                }}
+                className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500"
+              >
+                Modificar Motivo
+              </button>
+              <button
+                onClick={() => handleRechazarMovil(selectedItemMobile)}
+                disabled={isRejecting}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2 disabled:opacity-50"
+              >
+                {isRejecting && <Loader className="animate-spin h-4 w-4" />}
+                Confirmar Rechazo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Loader */}
       {loading && (
         <div className="flex justify-center items-center py-6">
@@ -492,167 +740,328 @@ const AutorizacionPage: React.FC = () => {
         </div>
       )}
 
-      {/* Tabla Cabeceras */}
-      {!loading && (
-        <div className="overflow-x-auto shadow-md rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
-              <tr>
-                <th className="px-2 py-1"></th>
-                <th className="px-2 py-1 text-left text-table-header">Fecha Destajo</th>
-                <th className="px-2 py-1 text-left text-table-header">Producto</th>
-                <th className="px-2 py-1 text-left text-table-header">Proceso</th>
-                <th className="px-2 py-1 text-left text-table-header">Subproceso</th>
-                <th className="px-2 py-1 text-left text-table-header">Cliente</th>
-                <th className="px-2 py-1 text-left text-table-header">Lote</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-              {paginatedCabeceras.length > 0 ? (
-                paginatedCabeceras.map((item, idx) => {
-                  const key = `${item.lote}_${item.fecha_destajo}_${item.cod_proceso}_${item.cod_subproceso || ""}`;
-                  return (
-                    <tr
-                      key={idx}
-                      onClick={() => handleRowClick(item)}
-                      className={`hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${
-                        selectedRow?.lote === item.lote &&
-                        selectedRow?.fecha_destajo === item.fecha_destajo &&
-                        selectedRow?.cod_proceso === item.cod_proceso &&
-                        (selectedRow?.cod_subproceso || "") === (item.cod_subproceso || "")
-                          ? "bg-indigo-100 dark:bg-indigo-900/50 border-l-4 border-indigo-500"
-                          : ""
-                      }`}
-                    >
-                      <td className={`px-2 py-1 text-center ${
-                        selectedRow?.lote === item.lote &&
-                        selectedRow?.fecha_destajo === item.fecha_destajo &&
-                        selectedRow?.cod_proceso === item.cod_proceso &&
-                        (selectedRow?.cod_subproceso || "") === (item.cod_subproceso || "")
-                          ? "bg-indigo-100 dark:bg-indigo-900/50 border-l-4 border-indigo-500"
-                          : ""
-                      }`}>
-                        <input
-                          type="checkbox"
-                          checked={selectedLotes.has(key)}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={() =>
-                            toggleCheckbox(item.lote, item.fecha_destajo, item.cod_proceso, item.cod_subproceso)
-                          }
-                          className="text-table-cell"
-                        />
-                      </td>
-                      <td className="px-2 py-1 text-table-cell">{formatDateYYYYMMDD(item.fecha_destajo)}</td>
-                      <td className="px-2 py-1 text-table-cell">{item.cod_producto} {item.producto}</td>
-                      <td className="px-2 py-1 text-table-cell">{item.cod_proceso} {item.proceso}</td>
-                      <td className="px-2 py-1 text-table-cell">{item.cod_subproceso} {item.subproceso}</td>
-                      <td className="px-2 py-1 text-table-cell">{item.cliente}</td>
-                      <td className="px-2 py-1 text-table-cell">{item.lote}</td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={9} className="px-3 py-4 text-center text-gray-500 text-table-cell">
-                    {searchTerm ? "No se encontraron registros que coincidan con la búsqueda." : "No hay registros pendientes de autorización."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Paginación */}
-      {filteredCabeceras.length > 0 && (
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm">Mostrar</span>
-            <select
-              value={itemsPerPage}
-              onChange={(e) => {
-                setItemsPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 dark:text-white"
-            >
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
-            <span className="text-sm">registros</span>
-            {searchTerm && (
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                (mostrando {filteredCabeceras.length} de {cabeceras.length} registros filtrados)
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => p - 1)}
-              className="px-3 py-1 rounded text-sm bg-gray-200 dark:bg-gray-700 disabled:opacity-50"
-            >
-              Anterior
-            </button>
-            <span className="text-sm">
-              Página {currentPage} de {totalPages}
-            </span>
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((p) => p + 1)}
-              className="px-3 py-1 rounded text-sm bg-gray-200 dark:bg-gray-700 disabled:opacity-50"
-            >
-              Siguiente
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Tabla Detalle con título */}
-      {selectedRow && (
-        <div className="mb-4">
-          <div className="bg-indigo-600 text-white px-4 py-2 rounded-t-lg">
-            <h3 className="font-semibold text-sm">
-              Detalle seleccionado → Fecha Destajo: {formatDateYYYYMMDD(selectedRow.fecha_destajo)} | 
-              Lote: {selectedRow.lote} | 
-              Proceso: {selectedRow.proceso}
-              {selectedRow.subproceso && ` | Subproceso: ${selectedRow.subproceso}`}
-              {selectedRow.cliente && ` | Cliente: ${selectedRow.cliente}`}
-            </h3>
-          </div>
-          <div className="shadow-md rounded-b-lg border border-gray-200 dark:border-gray-700 border-t-0 overflow-x-auto max-h-72 overflow-y-auto">
+      {/* VISTA DESKTOP - MANTENIENDO CÓDIGO ORIGINAL */}
+      <div className="hidden md:block">
+        {/* Tabla Cabeceras */}
+        {!loading && (
+          <div className="overflow-x-auto shadow-md rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  <th className="px-2 py-1 text-left text-table-header">Cod Trabajador</th>
-                  <th className="px-2 py-1 text-left text-table-header">Trabajador</th>
-                  <th className="px-2 py-1 text-left text-table-header">Horas</th>
-                  <th className="px-2 py-1 text-left text-table-header">Kilos</th>
+                  <th className="px-2 py-1"></th>
+                  <th className="px-2 py-1 text-left text-table-header">Fecha Destajo</th>
+                  <th className="px-2 py-1 text-left text-table-header">Producto</th>
+                  <th className="px-2 py-1 text-left text-table-header">Proceso</th>
+                  <th className="px-2 py-1 text-left text-table-header">Subproceso</th>
+                  <th className="px-2 py-1 text-left text-table-header">Cliente</th>
+                  <th className="px-2 py-1 text-left text-table-header">Lote</th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                {detalle.length > 0 ? (
-                  detalle.map((d, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <td className="px-2 py-1 text-table-cell">{d.cod_trabajador}</td>
-                      <td className="px-2 py-1 text-table-cell">{d.trabajador}</td>
-                      <td className="px-2 py-1 text-table-cell">{d.horas}</td>
-                      <td className="px-2 py-1 text-table-cell">{d.kilos}</td>
-                    </tr>
-                  ))
+                {paginatedCabeceras.length > 0 ? (
+                  paginatedCabeceras.map((item, idx) => {
+                    const key = `${item.lote}_${item.fecha_destajo}_${item.cod_proceso}_${item.cod_subproceso || ""}`;
+                    return (
+                      <tr
+                        key={idx}
+                        onClick={() => handleRowClick(item)}
+                        className={`hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${
+                          isRowSelected(item)
+                            ? "bg-indigo-100 dark:bg-indigo-900/50 border-l-4 border-indigo-500"
+                            : ""
+                        }`}
+                      >
+                        <td className={`px-2 py-1 text-center ${
+                          isRowSelected(item)
+                            ? "bg-indigo-100 dark:bg-indigo-900/50 border-l-4 border-indigo-500"
+                            : ""
+                        }`}>
+                          <input
+                            type="checkbox"
+                            checked={selectedLotes.has(key)}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={() =>
+                              toggleCheckbox(item.lote, item.fecha_destajo, item.cod_proceso, item.cod_subproceso)
+                            }
+                            className="text-table-cell"
+                          />
+                        </td>
+                        <td className="px-2 py-1 text-table-cell">{formatDateYYYYMMDD(item.fecha_destajo)}</td>
+                        <td className="px-2 py-1 text-table-cell">{item.cod_producto} {item.producto}</td>
+                        <td className="px-2 py-1 text-table-cell">{item.cod_proceso} {item.proceso}</td>
+                        <td className="px-2 py-1 text-table-cell">{item.cod_subproceso} {item.subproceso}</td>
+                        <td className="px-2 py-1 text-table-cell">{item.cliente}</td>
+                        <td className="px-2 py-1 text-table-cell">{item.lote}</td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-3 py-4 text-center text-gray-500 text-table-detail">
-                      No hay detalle para mostrar.
+                    <td colSpan={9} className="px-3 py-4 text-center text-gray-500 text-table-cell">
+                      {searchTerm ? "No se encontraron registros que coincidan con la búsqueda." : "No hay registros pendientes de autorización."}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Paginación */}
+        {filteredCabeceras.length > 0 && (
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">Mostrar</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 dark:text-white"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+              <span className="text-sm">registros</span>
+              {searchTerm && (
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  (mostrando {filteredCabeceras.length} de {cabeceras.length} registros filtrados)
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-4">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+                className="px-3 py-1 rounded text-sm bg-gray-200 dark:bg-gray-700 disabled:opacity-50"
+              >
+                Anterior
+              </button>
+              <span className="text-sm">
+                Página {currentPage} de {totalPages}
+              </span>
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+                className="px-3 py-1 rounded text-sm bg-gray-200 dark:bg-gray-700 disabled:opacity-50"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tabla Detalle con título */}
+        {selectedRow && (
+          <div className="mb-4">
+            <div className="bg-indigo-600 text-white px-4 py-2 rounded-t-lg">
+              <h3 className="font-semibold text-sm">
+                Detalle seleccionado → Fecha Destajo: {formatDateYYYYMMDD(selectedRow.fecha_destajo)} | 
+                Lote: {selectedRow.lote} | 
+                Proceso: {selectedRow.proceso}
+                {selectedRow.subproceso && ` | Subproceso: ${selectedRow.subproceso}`}
+                {selectedRow.cliente && ` | Cliente: ${selectedRow.cliente}`}
+              </h3>
+            </div>
+            <div className="shadow-md rounded-b-lg border border-gray-200 dark:border-gray-700 border-t-0 overflow-x-auto max-h-72 overflow-y-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                  <tr>
+                    <th className="px-2 py-1 text-left text-table-header">Cod Trabajador</th>
+                    <th className="px-2 py-1 text-left text-table-header">Trabajador</th>
+                    <th className="px-2 py-1 text-left text-table-header">Horas</th>
+                    <th className="px-2 py-1 text-left text-table-header">Kilos</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                  {detalle.length > 0 ? (
+                    detalle.map((d, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <td className="px-2 py-1 text-table-cell">{d.cod_trabajador}</td>
+                        <td className="px-2 py-1 text-table-cell">{d.trabajador}</td>
+                        <td className="px-2 py-1 text-table-cell">{d.horas}</td>
+                        <td className="px-2 py-1 text-table-cell">{d.kilos}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-3 py-4 text-center text-gray-500 text-table-detail">
+                        No hay detalle para mostrar.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* VISTA MÓVIL - CON DISEÑO SIMILAR AL SEGUNDO CÓDIGO */}
+      <div className="block md:hidden">
+        {!loading && paginatedCabeceras.length > 0 ? (
+          <div className="space-y-3">
+            {paginatedCabeceras.map((item, idx) => {
+              const key = `${item.lote}_${item.fecha_destajo}_${item.cod_proceso}_${item.cod_subproceso || ""}`;
+              const isExpanded = expandedCards.has(key);
+              const detalleItem = getDetalleForItem(item);
+              
+              return (
+                <div
+                  key={idx}
+                  className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-2 overflow-hidden transition-all ${
+                    isRowSelected(item) 
+                      ? "border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-800" 
+                      : "border-gray-200 dark:border-gray-700"
+                  }`}
+                >
+                  <div 
+                    onClick={() => handleRowClick(item)}
+                    className={`p-4 border-b cursor-pointer ${
+                      isRowSelected(item)
+                        ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white"
+                        : "bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-900/30 dark:to-indigo-800/30"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <span className={`text-xs font-semibold block mb-1 ${isRowSelected(item) ? "text-indigo-100" : "text-indigo-700 dark:text-indigo-300"}`}>
+                          {formatDateYYYYMMDD(item.fecha_destajo)}
+                        </span>
+                        <h3 className={`text-sm font-bold ${isRowSelected(item) ? "text-white" : "text-gray-900 dark:text-white"}`}>
+                          {item.cod_producto} {item.producto}
+                        </h3>
+                      </div>
+                      {isRowSelected(item) && <Package className="ml-2 h-5 w-5 text-white" />}
+                    </div>
+                  </div>
+
+                  <div className="p-4 space-y-3">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400 text-xs">Proceso:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">{item.cod_proceso} {item.proceso}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400 text-xs">Lote:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">{item.lote}</p>
+                      </div>
+                      {item.subproceso && (
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400 text-xs">Subproceso:</span>
+                          <p className="font-medium text-gray-900 dark:text-white">{item.cod_subproceso} {item.subproceso}</p>
+                        </div>
+                      )}
+                      {item.cliente && (
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400 text-xs">Cliente:</span>
+                          <p className="font-medium text-gray-900 dark:text-white">{item.cliente}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {detalleItem.length > 0 && (
+                      <div>
+                        <button
+                          onClick={() => toggleCardExpansion(key)}
+                          className="flex items-center justify-between w-full text-sm font-medium text-indigo-600 dark:text-indigo-400 py-2 px-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-md"
+                        >
+                          <span>Ver Detalle ({detalleItem.length} trabajadores)</span>
+                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </button>
+
+                        {isExpanded && (
+                          <div className="mt-2 space-y-2 max-h-64 overflow-y-auto">
+                            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-3 text-xs border border-gray-200 dark:border-gray-600">
+                              <div className="grid grid-cols-4 gap-2 font-semibold text-gray-700 dark:text-gray-300 pb-2 mb-2 border-b border-gray-200 dark:border-gray-600">
+                                <span>Código</span>
+                                <span className="col-span-2">Trabajador</span>
+                                <span>Horas/Kilos</span>
+                              </div>
+                            {detalleItem.map((d, i) => (
+                              <div key={i} className="grid grid-cols-4 gap-2 py-1 text-xs border-b border-gray-100 dark:border-gray-600 last:border-0">
+                                <span className="text-gray-600 dark:text-gray-400">{d.cod_trabajador}</span>
+                                <span className="col-span-2 text-gray-900 dark:text-white">{d.trabajador}</span>
+                                <span className="text-gray-900 dark:text-white">
+                                  {d.horas > 0 ? `${d.horas}h` : `${d.kilos}kg`}
+                                </span>
+                              </div>
+                            ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Botones de acción para móvil */}
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={() => openRejectModalMobile(item)}
+                        className="flex-1 px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center justify-center gap-2 text-sm"
+                      >
+                        <X className="h-4 w-4" />
+                        Rechazar
+                      </button>
+                      <button
+                        onClick={() => openAuthorizeModalMobile(item)}
+                        className="flex-1 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center justify-center gap-2 text-sm"
+                      >
+                        <CheckSquare className="h-4 w-4" />
+                        Autorizar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : !loading ? (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            {searchTerm ? "No se encontraron registros que coincidan con la búsqueda." : "No hay registros pendientes de autorización."}
+          </div>
+        ) : null}
+
+        {/* Paginación móvil */}
+        {filteredCabeceras.length > 0 && (
+          <div className="flex flex-col gap-4 mt-4">
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <span>Mostrar</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+              <span>registros</span>
+            </div>
+            <div className="flex items-center justify-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+                className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-50 border border-gray-300 dark:border-gray-600"
+              >
+                Anterior
+              </button>
+              <span>{currentPage} / {totalPages}</span>
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+                className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 disabled:opacity-50 border border-gray-300 dark:border-gray-600"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, ChangeEvent, FormEvent } from 'react';
 import { toast } from 'react-hot-toast';
-import { Loader, Edit3, Trash2, UserPlus, Search } from 'lucide-react';
+import { Loader, Edit3, Trash2, UserPlus, Search, RefreshCw } from 'lucide-react'; // 👈 Agregado RefreshCw
 
 // Servicios de Usuario y Rol
 import {
@@ -11,7 +11,8 @@ import {
   updateUser,
   deleteUser,
   assignRoleToUser,
-  revokeRoleFromUser
+  revokeRoleFromUser,
+  fetchExternalProfile // 👈 NUEVO
 } from '../../services/usuario.service';
 import { getAllActiveRoles } from '../../services/rol.service';
 
@@ -42,7 +43,10 @@ const initialCreateFormData: UserFormData = {
   contrasena: '',
   nombre: '',
   apellido: '',
+  origen_datos: 'local', // 👈 DEFAULT
+  codigo_trabajador_externo: '', // 👈 NUEVO
 };
+
 const initialEditFormData: UserUpdateData = {
   correo: '',
   nombre: '',
@@ -77,6 +81,10 @@ const UserManagementPage: React.FC = () => {
   const [createFormErrors, setCreateFormErrors] = useState<FormErrors>({});
   const [isSubmittingCreate, setIsSubmittingCreate] = useState<boolean>(false);
   const [selectedCreateRoleIds, setSelectedCreateRoleIds] = useState<number[]>([]);
+  
+  // 👇 NUEVOS ESTADOS PARA SINCRONIZACIÓN
+  const [isFetchingExternalProfile, setIsFetchingExternalProfile] = useState<boolean>(false);
+  const [externalProfileFetched, setExternalProfileFetched] = useState<boolean>(false);
 
   // Modal edición
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
@@ -154,35 +162,104 @@ const UserManagementPage: React.FC = () => {
     setNewUserFormData(initialCreateFormData);
     setSelectedCreateRoleIds([]);
     setCreateFormErrors({});
+    setExternalProfileFetched(false); // 👈 RESETEAR FLAG
     setIsCreateModalOpen(true);
   };
+  
   const handleCloseCreateModal = () => {
-    if (!isSubmittingCreate) {
+    if (!isSubmittingCreate && !isFetchingExternalProfile) { // 👈 BLOQUEAR SI ESTÁ SINCRONIZANDO
       setIsCreateModalOpen(false);
       setSelectedCreateRoleIds([]);
+      setExternalProfileFetched(false); // 👈 RESETEAR
     }
   };
 
   // Form creación: cambios
-  const handleNewUserChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleNewUserChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => { // 👈 Agregar HTMLSelectElement
     const { name, value } = event.target;
     setNewUserFormData(prev => ({ ...prev, [name]: value }));
     if (createFormErrors[name]) setCreateFormErrors(prev => ({ ...prev, [name]: undefined }));
+    
+    // 👇 RESETEAR FLAG SI CAMBIA CÓDIGO DE TRABAJADOR
+    if (name === 'codigo_trabajador_externo' && externalProfileFetched) {
+      setExternalProfileFetched(false);
+    }
   };
+  
   const handleCreateRoleSelectionChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const selectedOptions = Array.from(event.target.selectedOptions, option => parseInt(option.value, 10));
     setSelectedCreateRoleIds(selectedOptions);
+  };
+
+  // 👇 NUEVA FUNCIÓN: Buscar perfil externo
+  const handleFetchExternalProfile = async () => {
+    const codigoTrabajador = newUserFormData.codigo_trabajador_externo?.trim();
+    
+    if (!codigoTrabajador) {
+      toast.error('Debes ingresar un código de trabajador');
+      return;
+    }
+
+    setIsFetchingExternalProfile(true);
+    
+    try {
+      const perfil = await fetchExternalProfile(codigoTrabajador);
+      
+      // ✅ PRE-LLENAR CAMPOS
+      setNewUserFormData(prev => ({
+        ...prev,
+        nombre: perfil.nombre || '',
+        apellido: perfil.apellido || '',
+        nombre_usuario: perfil.dni_trabajador || ''
+      }));
+      
+      setExternalProfileFetched(true);
+      toast.success(`Perfil encontrado: ${perfil.nombre} ${perfil.apellido}`);
+      
+    } catch (err) {
+      console.error('Error fetching external profile:', err);
+      const errorData = getErrorMessage(err);
+      toast.error(errorData.message || 'Error al buscar perfil externo');
+      setExternalProfileFetched(false);
+    } finally {
+      setIsFetchingExternalProfile(false);
+    }
   };
 
   // Validación creación
   const validateCreateForm = (): boolean => {
     const errors: FormErrors = {};
     let isValid = true;
-    if (!newUserFormData.nombre_usuario.trim()) { errors.nombre_usuario = 'Nombre de usuario requerido.'; isValid = false; }
-    if (!newUserFormData.correo.trim()) { errors.correo = 'Correo requerido.'; isValid = false; }
-    else if (!/\S+@\S+\.\S+/.test(newUserFormData.correo)) { errors.correo = 'Formato de correo inválido.'; isValid = false; }
-    if (!newUserFormData.contrasena) { errors.contrasena = 'Contraseña requerida.'; isValid = false; }
-    else if (newUserFormData.contrasena.length < 8) { errors.contrasena = 'Contraseña debe tener al menos 8 caracteres.'; isValid = false; }
+    
+    if (!newUserFormData.nombre_usuario.trim()) { 
+      errors.nombre_usuario = 'Nombre de usuario requerido.'; 
+      isValid = false; 
+    }
+    
+    //if (!newUserFormData.correo.trim()) { 
+      //errors.correo = 'Correo requerido.'; 
+      //isValid = false; 
+    //} else if (!/\S+@\S+\.\S+/.test(newUserFormData.correo)) { 
+      //errors.correo = 'Formato de correo inválido.'; 
+      //isValid = false; 
+    //}
+    
+    if (!newUserFormData.contrasena) { 
+      errors.contrasena = 'Contraseña requerida.'; 
+      isValid = false; 
+    } else if (newUserFormData.contrasena.length < 8) { 
+      errors.contrasena = 'Contraseña debe tener al menos 8 caracteres.'; 
+      isValid = false; 
+    }
+    
+    // 👇 NUEVA VALIDACIÓN: Si es externo, debe tener código
+    if (newUserFormData.origen_datos === 'externo') {
+      if (!newUserFormData.codigo_trabajador_externo?.trim()) {
+        errors.codigo_trabajador_externo = 'El código de trabajador es requerido para usuarios externos.';
+        isValid = false;
+      }
+    }
+    
     setCreateFormErrors(errors);
     return isValid;
   };
@@ -201,7 +278,10 @@ const UserManagementPage: React.FC = () => {
         contrasena: newUserFormData.contrasena,
         nombre: newUserFormData.nombre?.trim() || undefined,
         apellido: newUserFormData.apellido?.trim() || undefined,
+        origen_datos: newUserFormData.origen_datos || 'local', // 👈 INCLUIR
+        codigo_trabajador_externo: newUserFormData.codigo_trabajador_externo?.trim() || undefined, // 👈 INCLUIR
       };
+      
       const createdUser = await createUser(dataToSend);
       createdUserId = createdUser.usuario_id;
       toast.success('Usuario creado exitosamente. Asignando roles...');
@@ -244,6 +324,7 @@ const UserManagementPage: React.FC = () => {
     setEditFormErrors({});
     setIsEditModalOpen(true);
   };
+  
   const handleCloseEditModal = () => {
     if (!isSubmittingEdit) {
       setIsEditModalOpen(false);
@@ -260,12 +341,14 @@ const UserManagementPage: React.FC = () => {
     setEditFormData(prev => ({ ...prev, [name]: val }));
     if (editFormErrors[name]) setEditFormErrors(prev => ({ ...prev, [name]: undefined }));
   };
+  
   const handleEditRoleSelectionChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const selectedOptions = Array.from(event.target.selectedOptions, option => parseInt(option.value, 10));
     setSelectedEditRoleIds(selectedOptions);
   };
 
   // Validación edición
+  /*
   const validateEditForm = (): boolean => {
     const errors: FormErrors = {};
     let isValid = true;
@@ -274,11 +357,11 @@ const UserManagementPage: React.FC = () => {
     setEditFormErrors(errors);
     return isValid;
   };
-
+  */
   // Submit edición
   const handleEditUserSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!editingUser || !validateEditForm()) return;
+    if (!editingUser /*|| !validateEditForm()*/) return;
     setIsSubmittingEdit(true);
 
     const userId = editingUser.usuario_id;
@@ -322,10 +405,12 @@ const UserManagementPage: React.FC = () => {
     setDeletingUser(user);
     setIsDeleteConfirmOpen(true);
   };
+  
   const handleCloseDeleteConfirm = () => {
     if (!isDeleting) setIsDeleteConfirmOpen(false);
     setDeletingUser(null);
   };
+  
   const handleConfirmDelete = async () => {
     if (!deletingUser) return;
     setIsDeleting(true);
@@ -505,7 +590,7 @@ const UserManagementPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Crear */}
+      {/* 👇 MODAL CREAR - MODIFICADO CON SINCRONIZACIÓN */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50 flex items-center justify-center px-4">
           <div className="relative mx-auto p-6 border w-full max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800">
@@ -514,7 +599,7 @@ const UserManagementPage: React.FC = () => {
               <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                 <div>
                   <label htmlFor="nombre_usuario" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Nombre de Usuario <span className="text-red-500">*</span>
+                    Nombre de Usuario {newUserFormData.origen_datos === 'externo' && <span className="text-blue-500">(Auto-llenado desde sistema externo)</span>}
                   </label>
                   <input
                     type="text"
@@ -528,9 +613,10 @@ const UserManagementPage: React.FC = () => {
                   />
                   {createFormErrors.nombre_usuario && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{createFormErrors.nombre_usuario}</p>}
                 </div>
+
                 <div>
                   <label htmlFor="correo" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Correo Electrónico <span className="text-red-500">*</span>
+                    Correo Electrónico 
                   </label>
                   <input
                     type="email"
@@ -539,11 +625,11 @@ const UserManagementPage: React.FC = () => {
                     value={newUserFormData.correo}
                     onChange={handleNewUserChange}
                     className={`mt-1 block w-full px-3 py-2 border ${createFormErrors.correo ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 focus:ring-indigo-500'} rounded-md shadow-sm focus:outline-none sm:text-sm dark:bg-gray-700 dark:text-white`}
-                    disabled={isSubmittingCreate}
-                    required
+                    disabled={isSubmittingCreate}                    
                   />
                   {createFormErrors.correo && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{createFormErrors.correo}</p>}
                 </div>
+
                 <div>
                   <label htmlFor="contrasena" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Contraseña <span className="text-red-500">*</span>
@@ -560,8 +646,74 @@ const UserManagementPage: React.FC = () => {
                   />
                   {createFormErrors.contrasena && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{createFormErrors.contrasena}</p>}
                 </div>
+
+                {/* 👇 NUEVO: Selector de Origen de Datos */}
                 <div>
-                  <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre (Opcional)</label>
+                  <label htmlFor="origen_datos" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Origen de Datos
+                  </label>
+                  <select
+                    id="origen_datos"
+                    name="origen_datos"
+                    value={newUserFormData.origen_datos || 'local'}
+                    onChange={handleNewUserChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    disabled={isSubmittingCreate || isFetchingExternalProfile}
+                  >
+                    <option value="local">Local</option>
+                    <option value="externo">Externo</option>
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Selecciona "Externo" si el perfil se sincronizará desde el sistema del cliente
+                  </p>
+                </div>
+
+                {/* 👇 NUEVO: Campo de Código de Trabajador (solo si es externo) */}
+                {newUserFormData.origen_datos === 'externo' && (
+                  <div>
+                    <label htmlFor="codigo_trabajador_externo" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Código de Trabajador <span className="text-red-500">*</span>
+                    </label>
+                    <div className="mt-1 flex gap-2">
+                      <input
+                        type="text"
+                        id="codigo_trabajador_externo"
+                        name="codigo_trabajador_externo"
+                        value={newUserFormData.codigo_trabajador_externo || ''}
+                        onChange={handleNewUserChange}
+                        placeholder="Ej: T001234"
+                        className={`flex-1 px-3 py-2 border ${createFormErrors.codigo_trabajador_externo ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 focus:ring-indigo-500'} rounded-md shadow-sm focus:outline-none sm:text-sm dark:bg-gray-700 dark:text-white`}
+                        disabled={isSubmittingCreate || isFetchingExternalProfile}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleFetchExternalProfile}
+                        disabled={isSubmittingCreate || isFetchingExternalProfile || !newUserFormData.codigo_trabajador_externo?.trim()}
+                        className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                        title="Buscar perfil en sistema externo"
+                      >
+                        {isFetchingExternalProfile ? (
+                          <Loader className="animate-spin h-4 w-4" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                    {createFormErrors.codigo_trabajador_externo && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{createFormErrors.codigo_trabajador_externo}</p>
+                    )}
+                    {externalProfileFetched && (
+                      <p className="mt-1 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                        ✓ Perfil sincronizado correctamente
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div>
+                  <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Nombre {newUserFormData.origen_datos === 'externo' && <span className="text-blue-500">(Auto-llenado desde sistema externo)</span>}
+                  </label>
                   <input
                     type="text"
                     id="nombre"
@@ -569,11 +721,14 @@ const UserManagementPage: React.FC = () => {
                     value={newUserFormData.nombre || ''}
                     onChange={handleNewUserChange}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
-                    disabled={isSubmittingCreate}
+                    disabled={isSubmittingCreate || (newUserFormData.origen_datos === 'externo' && !externalProfileFetched)}
                   />
                 </div>
+
                 <div>
-                  <label htmlFor="apellido" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Apellido (Opcional)</label>
+                  <label htmlFor="apellido" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Apellido {newUserFormData.origen_datos === 'externo' && <span className="text-blue-500">(Auto-llenado desde sistema externo)</span>}
+                  </label>
                   <input
                     type="text"
                     id="apellido"
@@ -581,7 +736,7 @@ const UserManagementPage: React.FC = () => {
                     value={newUserFormData.apellido || ''}
                     onChange={handleNewUserChange}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white"
-                    disabled={isSubmittingCreate}
+                    disabled={isSubmittingCreate || (newUserFormData.origen_datos === 'externo' && !externalProfileFetched)}
                   />
                 </div>
 
@@ -612,14 +767,14 @@ const UserManagementPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleCloseCreateModal}
-                  disabled={isSubmittingCreate}
+                  disabled={isSubmittingCreate || isFetchingExternalProfile}
                   className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmittingCreate || isLoadingRoles}
+                  disabled={isSubmittingCreate || isLoadingRoles || isFetchingExternalProfile}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 flex items-center justify-center"
                 >
                   {isSubmittingCreate && <Loader className="animate-spin h-4 w-4 mr-2" />}
@@ -631,7 +786,7 @@ const UserManagementPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Editar */}
+      {/* Modal Editar - SIN CAMBIOS */}
       {isEditModalOpen && editingUser && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50 flex items-center justify-center px-4">
           <div className="relative mx-auto p-6 border w-full max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800">
@@ -642,7 +797,7 @@ const UserManagementPage: React.FC = () => {
               <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                 <div>
                   <label htmlFor="edit_correo" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Correo Electrónico <span className="text-red-500">*</span>
+                    Correo Electrónico 
                   </label>
                   <input
                     type="email"
@@ -652,7 +807,7 @@ const UserManagementPage: React.FC = () => {
                     onChange={handleEditUserChange}
                     className={`mt-1 block w-full px-3 py-2 border ${editFormErrors.correo ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 focus:ring-indigo-500'} rounded-md shadow-sm focus:outline-none sm:text-sm dark:bg-gray-700 dark:text-white`}
                     disabled={isSubmittingEdit}
-                    required
+                    
                   />
                   {editFormErrors.correo && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{editFormErrors.correo}</p>}
                 </div>
@@ -741,7 +896,7 @@ const UserManagementPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Confirmación Desactivación */}
+      {/* Modal Confirmación Desactivación - SIN CAMBIOS */}
       {isDeleteConfirmOpen && deletingUser && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50 flex items-center justify-center px-4">
           <div className="relative mx-auto p-6 border w-full max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800">

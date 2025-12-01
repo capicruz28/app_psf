@@ -3,7 +3,8 @@ import {
     PaginatedUsersResponse,
     UserFormData,
     UserWithRoles,
-    UserUpdateData
+    UserUpdateData,
+    ExternalProfileResponse 
 } from '../types/usuario.types';
 
 const BASE_URL = '/usuarios';
@@ -91,6 +92,18 @@ export const revokeRoleFromUser = async (userId: number, roleId: number): Promis
         return response.data;
     } catch (error) {
         console.error(`Error revoking role ${roleId} from user ${userId}:`, error);
+        throw error;
+    }
+};
+
+export const fetchExternalProfile = async (codigoTrabajador: string): Promise<ExternalProfileResponse> => {
+    try {
+        const response = await api.get<ExternalProfileResponse>(
+            `${BASE_URL}/consultar-perfil-externo/${codigoTrabajador}/`
+        );
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching external profile for code ${codigoTrabajador}:`, error);
         throw error;
     }
 };

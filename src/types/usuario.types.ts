@@ -40,6 +40,8 @@ export interface Role {
       apellido?: string;
       contrasena?: string; // Solo para creación
       es_activo?: boolean;
+      origen_datos?: string;
+      codigo_trabajador_externo?: string;
   }
 
   // --- NUEVO: Tipo específico para el formulario de EDICIÓN ---
@@ -48,4 +50,12 @@ export interface Role {
       nombre?: string | null; // Nombre opcional, permitir null para borrarlo si el backend lo soporta
       apellido?: string | null; // Apellido opcional, permitir null
       es_activo?: boolean; // Opcional: si quieres controlar el estado desde el modal de edición
+}
+
+export interface ExternalProfileResponse {
+    codigo_trabajador: string;
+    nombre: string;
+    apellido: string;
+    dni_trabajador: string;
+    mensaje: string;
 }

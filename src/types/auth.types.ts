@@ -14,6 +14,7 @@ export interface UserData {
   apellido: string;
   es_activo: boolean;
   roles: string[]; // <-- CAMBIO PRINCIPAL: Añadir array de roles
+  codigo_trabajador_externo?: string; // Agregado para coincidir con usuario.types.ts
 }
 // ----------------------------------
 
