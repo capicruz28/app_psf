@@ -204,26 +204,28 @@ const RolePermissionsManager: React.FC<RolePermissionsManagerProps> = ({
 
   // --- Función recursiva para renderizar el árbol (sin cambios) ---
   const renderMenuNode = (node: SidebarMenuItem, level: number = 0): JSX.Element => {
-    const nodePermissions = permissions[node.menu_id] || { ver: false, crear: false, editar: false, eliminar: false };
-    const indentClass = `ml-${level * 4}`;
+    // Convertir menu_id a number para usar como índice seguro
+    const menuIdNum = typeof node.menu_id === 'string' ? parseInt(node.menu_id, 10) : node.menu_id;
+    const nodePermissions = permissions[menuIdNum] || { ver: false, crear: false, editar: false, eliminar: false };
+    
+    const indentStyle = { marginLeft: `${level * 1.5}rem` }; // Usar style en lugar de clase dinámica
 
     return (
-      <div key={node.menu_id} className={`py-1 ${indentClass}`}>
+      <div key={menuIdNum} style={indentStyle} className="py-1">
         <div className="flex items-center justify-between mb-1">
           <span className="font-medium text-sm text-gray-800 dark:text-gray-200">{node.nombre}</span>
           <div className="flex items-center mr-4">
             <Checkbox
-              id={`perm-${node.menu_id}-ver`}
+              id={`perm-${menuIdNum}-ver`}
               checked={nodePermissions.ver}
-              onCheckedChange={(checked) => handleViewPermissionChange(node.menu_id, !!checked)}
+              onCheckedChange={(checked) => handleViewPermissionChange(menuIdNum, !!checked)}
               disabled={isLoading || isSaving}
               aria-label={`Permiso de Ver para ${node.nombre}`}
               className="dark:border-gray-500 dark:data-[state=checked]:bg-indigo-500 dark:data-[state=checked]:border-indigo-500"
             />
           </div>
         </div>
-        {/* Ahora node.children siempre es un array, por lo que la condición es segura */}
-        {node.children.length > 0 && (
+        {node.children && node.children.length > 0 && (
           <div className="border-l border-gray-200 dark:border-gray-700 pl-3">
             {node.children.map((child: SidebarMenuItem) => renderMenuNode(child, level + 1))}
           </div>

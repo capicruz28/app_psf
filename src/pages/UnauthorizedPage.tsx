@@ -2,12 +2,12 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; // Para saber a dónde volver
+//import { useAuth } from '../context/AuthContext'; // Para saber a dónde volver
 
 const UnauthorizedPage: React.FC = () => {
-  const { isAdmin } = useAuth();
+  //const { isAdmin } = useAuth();
   // Decide a dónde enviar al usuario: admin a su dashboard, otros a /home
-  const returnPath = isAdmin ? '/admin/usuarios' : '/home';
+  //const returnPath = isAdmin ? '/admin/usuarios' : '/home';
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 text-center px-4">
@@ -18,7 +18,7 @@ const UnauthorizedPage: React.FC = () => {
         Lo sentimos, no tienes los permisos necesarios para acceder a esta página.
       </p>
       <Link
-        to={returnPath}
+        to="/"
         className="px-6 py-3 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition-colors duration-200 text-lg"
       >
         Volver a mi página principal
