@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useBreadcrumb } from '../../context/BreadcrumbContext';
-import { User, Mail, Settings, LogOut, ChevronDown, ChevronRight, Home, Key } from 'lucide-react';
+import { User, Settings, LogOut, ChevronDown, ChevronRight, Home, Key } from 'lucide-react';
 
 const Header = () => {
   const { auth, logout } = useAuth();

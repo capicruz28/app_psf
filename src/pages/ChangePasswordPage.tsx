@@ -2,7 +2,7 @@
 
 import React, { useState, FormEvent, ChangeEvent } from 'react';
 import { toast } from 'react-hot-toast';
-import { Loader, Key, Lock, Eye, EyeOff } from 'lucide-react';
+import { Loader, Key, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { changeOwnPassword } from '../services/usuario.service';
 import { getErrorMessage } from '../services/error.service';
