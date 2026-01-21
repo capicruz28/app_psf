@@ -32,6 +32,7 @@ import MenuManagementPage from './pages/admin/MenuManagementPage';
 import AutorizacionPage from './pages/AutorizacionPage';
 import FinalizarTareoPage from './pages/FinalizarTareoPage';
 import ReporteAutorizacionPage from './pages/ReporteAutorizacionPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ function App() {
                   <Route path="finalizartareo" element={<FinalizarTareoPage />} />
                   <Route path="autorizacion" element={<AutorizacionPage />} />
                   <Route path="reportedestajo" element={<ReporteAutorizacionPage />} />
+                  <Route path="cambiar-contrasena" element={<ChangePasswordPage />} />
 
                   {/* Catch-all DENTRO de MainLayout: redirige a /home si la ruta no existe */}
                   <Route path="*" element={<Navigate to="/home" replace />} />

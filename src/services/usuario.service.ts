@@ -4,7 +4,11 @@ import {
     UserFormData,
     UserWithRoles,
     UserUpdateData,
-    ExternalProfileResponse 
+    ExternalProfileResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
+    ChangePasswordRequest,
+    ChangePasswordResponse
 } from '../types/usuario.types';
 
 const BASE_URL = '/usuarios';
@@ -104,6 +108,48 @@ export const fetchExternalProfile = async (codigoTrabajador: string): Promise<Ex
         return response.data;
     } catch (error) {
         console.error(`Error fetching external profile for code ${codigoTrabajador}:`, error);
+        throw error;
+    }
+};
+
+/**
+ * Reset de contraseña por administrador
+ * Endpoint: POST /api/v1/usuarios/{usuario_id}/reset-password/
+ * Permisos: Rol "Administrador"
+ */
+export const resetUserPassword = async (
+    userId: number,
+    data: ResetPasswordRequest
+): Promise<ResetPasswordResponse> => {
+    try {
+        const response = await api.post<ResetPasswordResponse>(
+            `${BASE_URL}/${userId}/reset-password/`,
+            data
+        );
+        return response.data;
+    } catch (error) {
+        console.error(`Error resetting password for user ${userId}:`, error);
+        throw error;
+    }
+};
+
+/**
+ * Cambio de contraseña propia del usuario autenticado
+ * Endpoint: POST /api/v1/usuarios/{usuario_id}/change-password/
+ * Permisos: Usuario autenticado (solo su propia contraseña)
+ */
+export const changeOwnPassword = async (
+    userId: number,
+    data: ChangePasswordRequest
+): Promise<ChangePasswordResponse> => {
+    try {
+        const response = await api.post<ChangePasswordResponse>(
+            `${BASE_URL}/${userId}/change-password/`,
+            data
+        );
+        return response.data;
+    } catch (error) {
+        console.error(`Error changing password for user ${userId}:`, error);
         throw error;
     }
 };

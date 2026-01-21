@@ -59,3 +59,24 @@ export interface ExternalProfileResponse {
     dni_trabajador: string;
     mensaje: string;
 }
+
+// Tipos para reset de contraseña por administrador
+export interface ResetPasswordRequest {
+    nueva_contrasena: string;
+}
+
+export interface ResetPasswordResponse {
+    message: string;
+    usuario_id: number;
+}
+
+// Tipos para cambio de contraseña propia
+export interface ChangePasswordRequest {
+    contrasena_actual: string;
+    nueva_contrasena: string;
+}
+
+export interface ChangePasswordResponse {
+    message: string;
+    usuario_id: number;
+}

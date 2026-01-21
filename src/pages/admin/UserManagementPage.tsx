@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, ChangeEvent, FormEvent } from 'react';
 import { toast } from 'react-hot-toast';
-import { Loader, Edit3, Trash2, UserPlus, Search, RefreshCw } from 'lucide-react'; // 👈 Agregado RefreshCw
+import { Loader, Edit3, Trash2, UserPlus, Search, RefreshCw, Key } from 'lucide-react'; // 👈 Agregado RefreshCw y Key
 
 // Servicios de Usuario y Rol
 import {
@@ -12,7 +12,8 @@ import {
   deleteUser,
   assignRoleToUser,
   revokeRoleFromUser,
-  fetchExternalProfile // 👈 NUEVO
+  fetchExternalProfile, // 👈 NUEVO
+  resetUserPassword // 👈 NUEVO
 } from '../../services/usuario.service';
 import { getAllActiveRoles } from '../../services/rol.service';
 
@@ -98,6 +99,14 @@ const UserManagementPage: React.FC = () => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState<boolean>(false);
   const [deletingUser, setDeletingUser] = useState<UserWithRoles | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  // Modal reset de contraseña
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState<boolean>(false);
+  const [resettingUser, setResettingUser] = useState<UserWithRoles | null>(null);
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [resetPasswordErrors, setResetPasswordErrors] = useState<FormErrors>({});
+  const [isResettingPassword, setIsResettingPassword] = useState<boolean>(false);
 
   // Fetch de usuarios
   const fetchUsers = useCallback(async (page: number, search: string) => {
@@ -428,6 +437,71 @@ const UserManagementPage: React.FC = () => {
     }
   };
 
+  // Modal reset de contraseña: abrir/cerrar
+  const handleOpenResetPasswordModal = (user: UserWithRoles) => {
+    setResettingUser(user);
+    setNewPassword('');
+    setConfirmPassword('');
+    setResetPasswordErrors({});
+    setIsResetPasswordModalOpen(true);
+  };
+
+  const handleCloseResetPasswordModal = () => {
+    if (!isResettingPassword) {
+      setIsResetPasswordModalOpen(false);
+      setResettingUser(null);
+      setNewPassword('');
+      setConfirmPassword('');
+      setResetPasswordErrors({});
+    }
+  };
+
+  // Validación reset de contraseña
+  const validateResetPassword = (): boolean => {
+    const errors: FormErrors = {};
+    let isValid = true;
+
+    if (!newPassword.trim()) {
+      errors.newPassword = 'Nueva contraseña requerida.';
+      isValid = false;
+    } else if (newPassword.length < 8) {
+      errors.newPassword = 'La contraseña debe tener al menos 8 caracteres.';
+      isValid = false;
+    }
+
+    if (!confirmPassword.trim()) {
+      errors.confirmPassword = 'Confirmación de contraseña requerida.';
+      isValid = false;
+    } else if (newPassword !== confirmPassword) {
+      errors.confirmPassword = 'Las contraseñas no coinciden.';
+      isValid = false;
+    }
+
+    setResetPasswordErrors(errors);
+    return isValid;
+  };
+
+  // Submit reset de contraseña
+  const handleResetPasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!resettingUser || !validateResetPassword()) return;
+    setIsResettingPassword(true);
+
+    try {
+      await resetUserPassword(resettingUser.usuario_id, {
+        nueva_contrasena: newPassword,
+      });
+      toast.success('Contraseña restablecida exitosamente.');
+      handleCloseResetPasswordModal();
+    } catch (err) {
+      console.error('Error resetting password:', err);
+      const errorData = getErrorMessage(err);
+      toast.error(errorData.message || 'Error al restablecer contraseña.');
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
   // UI
   return (
     <div className="w-full">      
@@ -522,6 +596,14 @@ const UserManagementPage: React.FC = () => {
                         disabled={isLoadingRoles || authLoading || !isAuthenticated}
                       >
                         <Edit3 className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleOpenResetPasswordModal(user)}
+                        className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                        title="Restablecer Contraseña"
+                        disabled={authLoading || !isAuthenticated}
+                      >
+                        <Key className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleOpenDeleteConfirm(user)}
@@ -923,6 +1005,95 @@ const UserManagementPage: React.FC = () => {
                 {isDeleting ? 'Desactivando...' : 'Sí, Desactivar'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Reset de Contraseña */}
+      {isResetPasswordModalOpen && resettingUser && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50 flex items-center justify-center px-4">
+          <div className="relative mx-auto p-6 border w-full max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800">
+            <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4">
+              Restablecer Contraseña: <span className="font-bold">{resettingUser.nombre_usuario}</span>
+            </h3>
+            <form onSubmit={handleResetPasswordSubmit} noValidate>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Nueva Contraseña <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    id="newPassword"
+                    value={newPassword}
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      if (resetPasswordErrors.newPassword) {
+                        setResetPasswordErrors(prev => ({ ...prev, newPassword: undefined }));
+                      }
+                    }}
+                    className={`mt-1 block w-full px-3 py-2 border ${
+                      resetPasswordErrors.newPassword
+                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                        : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 focus:ring-indigo-500'
+                    } rounded-md shadow-sm focus:outline-none sm:text-sm dark:bg-gray-700 dark:text-white`}
+                    disabled={isResettingPassword}
+                    required
+                  />
+                  {resetPasswordErrors.newPassword && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                      {resetPasswordErrors.newPassword}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Confirmar Nueva Contraseña <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      if (resetPasswordErrors.confirmPassword) {
+                        setResetPasswordErrors(prev => ({ ...prev, confirmPassword: undefined }));
+                      }
+                    }}
+                    className={`mt-1 block w-full px-3 py-2 border ${
+                      resetPasswordErrors.confirmPassword
+                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                        : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 focus:ring-indigo-500'
+                    } rounded-md shadow-sm focus:outline-none sm:text-sm dark:bg-gray-700 dark:text-white`}
+                    disabled={isResettingPassword}
+                    required
+                  />
+                  {resetPasswordErrors.confirmPassword && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                      {resetPasswordErrors.confirmPassword}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCloseResetPasswordModal}
+                  disabled={isResettingPassword}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isResettingPassword}
+                  className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 flex items-center justify-center"
+                >
+                  {isResettingPassword && <Loader className="animate-spin h-4 w-4 mr-2" />}
+                  {isResettingPassword ? 'Restableciendo...' : 'Restablecer Contraseña'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

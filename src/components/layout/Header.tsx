@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useBreadcrumb } from '../../context/BreadcrumbContext';
-import { User, Mail, Settings, LogOut, ChevronDown, ChevronRight, Home } from 'lucide-react';
+import { User, Mail, Settings, LogOut, ChevronDown, ChevronRight, Home, Key } from 'lucide-react';
 
 const Header = () => {
   const { auth, logout } = useAuth();
@@ -123,17 +123,21 @@ const Header = () => {
               </div>
 
               <button
+                onClick={() => {
+                  navigate('/cambiar-contrasena');
+                  setIsMenuOpen(false);
+                }}
                 className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center transition-colors"
               >
-                <User className="w-4 h-4 mr-3" />
-                Mi perfil
+                <Key className="w-4 h-4 mr-3" />
+                Cambiar Contraseña
               </button>
 
               <button
                 className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center transition-colors"
               >
-                <Mail className="w-4 h-4 mr-3" />
-                Bandeja de entrada
+                <User className="w-4 h-4 mr-3" />
+                Mi perfil
               </button>
 
               <button
