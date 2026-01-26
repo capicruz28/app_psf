@@ -9,8 +9,7 @@ import {
   Users, 
   UserCheck, 
   BarChart3, 
-  Calendar,
-  AlertCircle
+  Calendar
 } from 'lucide-react';
 import SolicitudesList from './SolicitudesList';
 import SolicitudDetail from './SolicitudDetail';
