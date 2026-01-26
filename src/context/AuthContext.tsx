@@ -200,10 +200,76 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = async () => doLogout(true);
 
   const hasRole = (...roles: string[]) => {
-    if (!auth.user?.roles?.length) return false;
-    const userLower = new Set(auth.user.roles.map((r) => r.toLowerCase()));
-    const synonym = (r: string) => (r.toLowerCase() === 'admin' ? ['admin', 'administrador'] : [r.toLowerCase()]);
-    return roles.some((r) => synonym(r).some((s) => userLower.has(s)));
+    // Verificar primero por nombre de usuario si roles está vacío
+    const isSuperAdminByUsername = auth.user?.nombre_usuario?.toLowerCase() === 'superadmin';
+    
+    // Si es SuperAdmin por nombre de usuario, tiene acceso a todo
+    if (isSuperAdminByUsername) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ SuperAdmin detected by username - granting access to all');
+      }
+      return true;
+    }
+    
+    // Si no hay roles, retornar false (excepto si ya se detectó como SuperAdmin)
+    if (!auth.user?.roles?.length) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 No roles found for user');
+      }
+      return false;
+    }
+    
+    const userLower = new Set(auth.user.roles.map((r) => r.toLowerCase().trim()));
+    
+    // Debug: Log para ver qué roles tiene el usuario (solo en desarrollo)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 User roles:', auth.user.roles);
+      console.log('🔍 Checking for roles:', roles);
+    }
+    
+    // Verificar si el usuario es SuperAdministrador (tiene acceso a todo)
+    // Manejar múltiples variaciones del nombre - incluyendo "superadmin" sin guiones
+    const superAdminVariations = [
+      'superadministrador',
+      'super_admin',
+      'superadmin',
+      'super administrador',
+      'super-administrador',
+      'super_administrador',
+    ];
+    
+    // Verificar si alguno de los roles del usuario contiene "super" y "admin"
+    const isSuperAdmin = superAdminVariations.some(variation => userLower.has(variation)) ||
+                         Array.from(userLower).some(role => 
+                           (role.includes('super') && role.includes('admin')) ||
+                           role === 'superadmin'
+                         );
+    
+    // Si es SuperAdministrador, tiene acceso a todo
+    if (isSuperAdmin) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ User is SuperAdministrador - granting access to all');
+      }
+      return true;
+    }
+    
+    // Sinónimos para roles comunes
+    const getSynonyms = (r: string): string[] => {
+      const lower = r.toLowerCase().trim();
+      if (lower === 'admin' || lower === 'administrador') {
+        return ['admin', 'administrador'];
+      }
+      if (lower.includes('super') && lower.includes('admin')) {
+        return superAdminVariations;
+      }
+      return [lower];
+    };
+    
+    const result = roles.some((r) => getSynonyms(r).some((s) => userLower.has(s)));
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Role check result:', result);
+    }
+    return result;
   };
 
   const value = useMemo<AuthContextType>(

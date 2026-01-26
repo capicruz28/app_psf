@@ -313,10 +313,19 @@ const FinalizarTareoPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // No hacer llamadas si es superadmin o no tiene codigo_trabajador_externo
+    const isSuperAdmin = auth.user?.nombre_usuario?.toLowerCase() === 'superadmin';
+    const hasCodigoTrabajador = auth.user?.codigo_trabajador_externo?.trim();
+    
+    if (isSuperAdmin || !hasCodigoTrabajador) {
+      setLoading(false);
+      return;
+    }
+
     const fetchData = async () => {
       setLoading(true);
       try {
-        const data = await getPendientesAutorizacion(auth.user?.codigo_trabajador_externo || "");
+        const data = await getPendientesAutorizacion(hasCodigoTrabajador);
         setPendientes(data);
       } catch {
         toast.error("Error al cargar pendientes.");
@@ -325,7 +334,7 @@ const FinalizarTareoPage: React.FC = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [auth.user]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -444,8 +453,12 @@ const FinalizarTareoPage: React.FC = () => {
         };
         await finalizarTareo(req);
       }
-      const data = await getPendientesAutorizacion(auth.user?.codigo_trabajador_externo || "");
-      setPendientes(data);
+      // Solo recargar si tiene codigo_trabajador_externo válido
+      const codigoTrabajador = auth.user?.codigo_trabajador_externo?.trim();
+      if (codigoTrabajador) {
+        const data = await getPendientesAutorizacion(codigoTrabajador);
+        setPendientes(data);
+      }
       toast.success("Tareo finalizado correctamente.");
       setSelectedRow(null);
       setCurrentPage(1);

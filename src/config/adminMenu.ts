@@ -68,4 +68,17 @@ export const administrationNavItems: SidebarMenuItem[] = [
     area_nombre: null,
     orden: 4,
   },
+  {
+    menu_id: 'vacaciones_admin', // <-- menu_id ahora es string
+    nombre: 'Vacaciones y Permisos',
+    ruta: '/admin/vacaciones',
+    icono: 'Calendar',
+    children: [],
+    es_activo: true,
+    padre_menu_id: null,
+    area_id: null,
+    area_nombre: null,
+    orden: 5,
+    requiredRole: 'SuperAdministrador', // Solo visible para SuperAdministrador
+  },
 ];

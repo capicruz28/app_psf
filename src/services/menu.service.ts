@@ -27,13 +27,14 @@ export const menuService = {
         return response.data.menu; // Devuelve solo el array de menú
       } else {
         console.error(`Respuesta inesperada de ${endpoint}:`, response.data);
-        return []; // Devuelve array vacío si el formato no es correcto
+        // Si la respuesta no tiene el formato esperado, devolver array vacío
+        // pero no lanzar error (puede ser que el backend devuelva un array vacío legítimamente)
+        return [];
       }
     } catch (error) {
       console.error(`Error fetching sidebar menu from ${endpoint}:`, error);
-      // Considera lanzar el error para que el componente lo maneje
-      // throw error;
-      return []; // O devuelve array vacío
+      // Lanzar el error para que el componente lo maneje y muestre un mensaje
+      throw error;
     }
   },
 

@@ -105,13 +105,63 @@ const SidebarTooltip: React.FC<TooltipProps> = ({ text, children }) => {
 // --- COMPONENTE PRINCIPAL ---
 const NewSidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
   const { isDarkMode, toggleDarkMode } = useTheme();
-  const { logout, hasRole } = useAuth();
+  const { logout, hasRole, auth } = useAuth();
   const { setBreadcrumbs } = useBreadcrumb();
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
 
-  const isAdmin = useMemo(() => hasRole('admin'), [hasRole]);
+  // Verificar si es SuperAdmin o Admin
+  // SuperAdmin tiene acceso a todo sin necesidad de permisos específicos
+  // También verificar por nombre de usuario si roles está vacío
+  const isSuperAdmin = useMemo(() => {
+    // Verificar por nombre de usuario si roles está vacío
+    if (auth.user?.nombre_usuario?.toLowerCase() === 'superadmin') {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ SuperAdmin detected by username');
+      }
+      return true;
+    }
+    
+    if (!auth.user?.roles?.length) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 No roles found for user');
+      }
+      return false;
+    }
+    const userRoles = auth.user.roles.map(r => r.toLowerCase().trim());
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Checking SuperAdmin - User roles:', userRoles);
+    }
+    const result = userRoles.some(role => 
+      (role.includes('super') && role.includes('admin')) ||
+      role === 'superadmin' ||
+      role === 'superadministrador' ||
+      role === 'super_admin' ||
+      role === 'super administrador'
+    );
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Is SuperAdmin?', result);
+    }
+    return result;
+  }, [auth.user?.roles, auth.user?.nombre_usuario]);
+
+  // isAdmin debe ser true tanto para admin como para SuperAdministrador
+  const isAdmin = useMemo(() => {
+    // Si es SuperAdmin, siempre es admin (sin verificar permisos)
+    if (isSuperAdmin) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ SuperAdmin detected - granting admin access');
+      }
+      return true;
+    }
+    // Si no, verificar si tiene rol admin
+    const result = hasRole('admin', 'administrador');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Is Admin?', result);
+    }
+    return result;
+  }, [hasRole, isSuperAdmin]);
   
   // Estados principales
   const [isMobile, setIsMobile] = useState(false);
@@ -205,7 +255,8 @@ const NewSidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
   useEffect(() => {
     let breadcrumb = findBreadcrumbPath(menuItems, currentPath);
     
-    if (!breadcrumb && isAdmin) {
+    // Si no se encuentra en el menú dinámico y es SuperAdmin, buscar en el menú estático
+    if (!breadcrumb && isSuperAdmin) {
       const adminItem = administrationNavItems.find(item => {
         if (item.isSeparator) return false;
         const itemPath = normalizePath(item.ruta);
@@ -225,7 +276,7 @@ const NewSidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
     } else {
       setBreadcrumbs([]);
     }
-  }, [currentPath, menuItems, isAdmin, findBreadcrumbPath, setBreadcrumbs]);
+  }, [currentPath, menuItems, isSuperAdmin, findBreadcrumbPath, setBreadcrumbs]);
 
   const handleNavigate = useCallback((path: string) => {
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -251,17 +302,26 @@ const NewSidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
     });
   }, []);
 
-  // Fetch data
+  // Fetch data - siempre cargar el menú, no depende de isAdmin
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Fetching menu items...');
+        }
         const items = await menuService.getSidebarMenu();
-        setMenuItems(items);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📋 Menu items loaded:', items);
+          console.log('📋 Menu items count:', items.length);
+          console.log('📋 Menu items:', JSON.stringify(items, null, 2));
+        }
+        setMenuItems(items || []); // Asegurar que siempre sea un array
       } catch (err) {
         console.error('❌ Error fetching sidebar data:', err);
-        setError(`No se pudieron cargar los datos del menú. Intente recargar.`);
+        const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+        setError(`No se pudieron cargar los datos del menú: ${errorMessage}`);
         setMenuItems([]);
       } finally {
         setLoading(false);
@@ -269,7 +329,7 @@ const NewSidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
     };
 
     fetchData();
-  }, [isAdmin]);
+  }, []); // Removido isAdmin de dependencias - el menú debe cargarse siempre
 
   // Expand Parents
   useEffect(() => {
@@ -327,6 +387,126 @@ const NewSidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
       }
     `;
   }, [currentPath, isVisuallyExpanded, transitionClass, isMobile]);
+
+  // Renderizar menú de administración estático
+  // Para SuperAdmin: Solo mostrar "Vacaciones y Permisos"
+  // Para Admin normal: Mostrar todos los items excepto los que requieren SuperAdmin
+  const renderAdminStaticMenu = useMemo(() => {
+    // Si es SuperAdmin, solo mostrar el item de Vacaciones y Permisos
+    if (isSuperAdmin) {
+      const vacacionesItem = administrationNavItems.find(item => item.menu_id === 'vacaciones_admin');
+      if (!vacacionesItem) return null;
+
+      const IconComponent = getIcon(vacacionesItem.icono, LucideIcons.LayoutDashboard);
+      const itemPath = normalizePath(vacacionesItem.ruta);
+
+      return (
+        <div className="mb-3 border-b border-gray-200 dark:border-gray-700 pb-3">
+          {(isVisuallyExpanded || isMobile) && (
+            <div className="mb-2 pl-2">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+                <LucideIcons.Shield className="w-4 h-4" />
+                Administración
+              </h2>
+            </div>
+          )}
+          
+          {!isVisuallyExpanded && !isMobile && (
+            <div className="mb-3 px-1">
+              <div className="p-2 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                <LucideIcons.Shield className="w-5 h-5" />
+              </div>
+            </div>
+          )}
+          
+          <div className="space-y-1">
+            <NavLink
+              to={itemPath}
+              className={getLinkClasses(itemPath, true)}
+              end={true}
+            >
+              {IconComponent}
+              {(isVisuallyExpanded || isMobile) && (
+                <span className="ml-3 text-sm flex-1 truncate">{vacacionesItem.nombre}</span>
+              )}
+            </NavLink>
+          </div>
+        </div>
+      );
+    }
+
+    // Para Admin normal, mostrar todos los items excepto los que requieren SuperAdmin
+    return (
+      <div className="mb-3 border-b border-gray-200 dark:border-gray-700 pb-3">
+        {(isVisuallyExpanded || isMobile) && (
+          <div className="mb-2 pl-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+              <LucideIcons.Shield className="w-4 h-4" />
+              Administración
+            </h2>
+          </div>
+        )}
+        
+        {!isVisuallyExpanded && !isMobile && (
+          <div className="mb-3 px-1">
+            <div className="p-2 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+              <LucideIcons.Shield className="w-5 h-5" />
+            </div>
+          </div>
+        )}
+        
+        <div className="space-y-1">
+          {administrationNavItems.map((item) => {
+            // Filtrar por rol requerido
+            if (item.requiredRole) {
+              const hasRequiredRole = hasRole(item.requiredRole);
+              if (!hasRequiredRole) {
+                return null;
+              }
+            }
+
+            if (item.isSeparator) { 
+              if (!isVisuallyExpanded && !isMobile) return null; 
+              return (
+                <h3 
+                  key={item.menu_id}
+                  className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-2 pl-2 mt-4"
+                >
+                  {item.nombre}
+                </h3>
+              );
+            }
+            
+            const IconComponent = getIcon(item.icono, LucideIcons.LayoutDashboard);
+            const itemPath = normalizePath(item.ruta);
+
+            const linkElement = (
+              <NavLink
+                to={itemPath}
+                className={getLinkClasses(itemPath, true)}
+                end={true}
+              >
+                {IconComponent}
+                {(isVisuallyExpanded || isMobile) && (
+                  <span className="ml-3 text-sm flex-1 truncate">{item.nombre}</span>
+                )}
+              </NavLink>
+            );
+
+            if (!isVisuallyExpanded && !isMobile) {
+              return (
+                <SidebarTooltip key={item.menu_id} text={item.nombre}>
+                  {linkElement}
+                </SidebarTooltip>
+              );
+            }
+
+            return <div key={item.menu_id}>{linkElement}</div>;
+          })}
+        </div>
+      </div>
+    );
+  }, [isVisuallyExpanded, getLinkClasses, isMobile, hasRole, isSuperAdmin]);
 
   // Renderizar contenido del link
   const renderLinkContent = useCallback((item: SidebarMenuItem, hasChildren: boolean, isExpanded: boolean) => {
@@ -518,74 +698,6 @@ const NewSidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
     ));
   }, [menuItems, isVisuallyExpanded, renderMenuItem, isMobile]);
 
-  // Renderizar menú de administración
-  const renderAdminStaticMenu = useMemo(() => (
-    <div className="mb-3 border-b border-gray-200 dark:border-gray-700 pb-3">
-      {(isVisuallyExpanded || isMobile) && (
-        <div className="mb-2 pl-2">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
-            <LucideIcons.Shield className="w-4 h-4" />
-            Administración
-          </h2>
-        </div>
-      )}
-      
-      {!isVisuallyExpanded && !isMobile && (
-        <div className="mb-3 px-1">
-          <div className="p-2 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-            <LucideIcons.Shield className="w-5 h-5" />
-          </div>
-        </div>
-      )}
-      
-      <div className="space-y-1">
-        {administrationNavItems.map((item) => {
-          if (item.isSeparator) { 
-            if (!isVisuallyExpanded && !isMobile) return null; 
-            return (
-              <h3 
-                key={item.menu_id}
-                className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-2 pl-2 mt-4"
-              >
-                {item.nombre}
-              </h3>
-            );
-          }
-          
-          const IconComponent = getIcon(item.icono, LucideIcons.LayoutDashboard);
-          const itemPath = normalizePath(item.ruta);
-
-          const linkElement = (
-            <NavLink
-              to={itemPath}
-              className={getLinkClasses(itemPath, true)}
-              end={true}
-            >
-              {IconComponent}
-              {(isVisuallyExpanded || isMobile) && (
-                <span className="ml-3 text-sm flex-1 truncate">{item.nombre}</span>
-              )}
-            </NavLink>
-          );
-
-          // Envolver con tooltip solo en modo colapsado
-          if (!isVisuallyExpanded && !isMobile) {
-            return (
-              <SidebarTooltip key={item.menu_id} text={item.nombre}>
-                {linkElement}
-              </SidebarTooltip>
-            );
-          }
-
-          return <div key={item.menu_id}>{linkElement}</div>;
-        })}
-      </div>
-    </div>
-  ), [isVisuallyExpanded, getLinkClasses, isMobile]);
-
-  // src/components/layout/NewSidebar.tsx - PARTE 3 (VERSIÓN CORREGIDA)
-// CONTINUACIÓN desde la Parte 2...
-
   // RENDERIZADO PRINCIPAL - MÓVIL
   if (isMobile) {
     return (
@@ -631,9 +743,11 @@ const NewSidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
 
             {!loading && !error && (
               <nav>
+                {/* Menú de administración estático */}
                 {isAdmin && renderAdminStaticMenu}
                 
-                {menuItems.length > 0 && (
+                {/* Menú dinámico del backend - NO mostrar para SuperAdmin */}
+                {!isSuperAdmin && menuItems.length > 0 && (
                   <div className="space-y-1"> 
                     {isAdmin && (
                       <div className="pl-2 mb-4">
@@ -819,9 +933,11 @@ const NewSidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
 
           {!loading && !error && (
             <nav>
+              {/* Menú de administración estático */}
               {isAdmin && renderAdminStaticMenu}
               
-              {menuItems.length > 0 && (
+              {/* Menú dinámico del backend - NO mostrar para SuperAdmin */}
+              {!isSuperAdmin && menuItems.length > 0 && (
                 <div className="space-y-1"> 
                   {isVisuallyExpanded && isAdmin && (
                     <div className="pl-2 mb-4 mt-3">

@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requiredRole, children }) => {
-  const { auth, isAuthenticated, loading } = useAuth();
+  const { auth, isAuthenticated, loading, hasRole } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -26,16 +26,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requiredRole, children 
   }
 
   if (requiredRole) {
-    const userRoles = (auth.user?.roles ?? []).map(r => r.toLowerCase());
-    const required = requiredRole.toLowerCase();
-
-    // Soporta tanto "Administrador" (backend) como "admin" (frontend)
-    const synonyms: Record<string, string[]> = {
-      admin: ['admin', 'administrador'],
-    };
-    const accepted = new Set(synonyms[required] ?? [required]);
-
-    const hasRequiredRole = userRoles.some(r => accepted.has(r));
+    // Usar la función hasRole del contexto que ya maneja SuperAdministrador
+    const hasRequiredRole = hasRole(requiredRole);
     if (!hasRequiredRole) {
       return <Navigate to="/unauthorized" replace />;
     }

@@ -28,6 +28,7 @@ import UserManagementPage from './pages/admin/UserManagementPage'; // Ajusta rut
 import RoleManagementPage from './pages/admin/RoleManagementPage'; // Ajusta ruta
 import AreaManagementPage from './pages/admin/AreaManagementPage';
 import MenuManagementPage from './pages/admin/MenuManagementPage';
+import VacacionesAdminPage from './pages/admin/vacaciones/VacacionesAdminPage';
 // ... (importa otras páginas de admin si las tienes) ...
 import AutorizacionPage from './pages/AutorizacionPage';
 import FinalizarTareoPage from './pages/FinalizarTareoPage';
@@ -93,6 +94,14 @@ function App() {
                 <Route path="roles" element={<RoleManagementPage />} />
                 <Route path="areas" element={<AreaManagementPage />} />                
                 <Route path="menus" element={<MenuManagementPage />} />
+                <Route 
+                  path="vacaciones" 
+                  element={
+                    <ProtectedRoute requiredRole="SuperAdministrador">
+                      <VacacionesAdminPage />
+                    </ProtectedRoute>
+                  } 
+                />
                 
                 {/* Añade aquí más rutas específicas de admin si las tienes */}
                 {/* Ejemplo: <Route path="permisos" element={<PermissionPage />} /> */}

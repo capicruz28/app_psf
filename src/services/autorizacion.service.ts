@@ -14,8 +14,11 @@ const BASE_URL = '/autorizacion';
 
 export const getPendientesAutorizacion = async (codigo_trabajador_externo: string): Promise<PendienteAutorizacion[]> => {
   try {
-    // ✅ CAMBIO: Ya tiene / al final - OK
-    const response = await api.get<PendienteAutorizacion[]>(`${BASE_URL}/pendientes/${codigo_trabajador_externo}/`);
+    // Validar que el código no esté vacío
+    if (!codigo_trabajador_externo?.trim()) {
+      throw new Error('Código de trabajador externo es requerido');
+    }
+    const response = await api.get<PendienteAutorizacion[]>(`${BASE_URL}/pendientes/${codigo_trabajador_externo.trim()}/`);
     return response.data;
   } catch (error) {
     console.error('Error fetching pendientes de autorización:', error);

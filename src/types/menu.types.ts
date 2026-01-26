@@ -15,6 +15,7 @@ export interface SidebarMenuItem { // Renombrado para claridad (antes MenuItem)
   area_nombre: string | null;
   children: SidebarMenuItem[]; // Usa el tipo renombrado recursivamente
   isSeparator?: boolean; // <--- AÑADIDO: Para los títulos en el menú estático
+  requiredRole?: string; // <--- AÑADIDO: Rol requerido para ver este item (ej: 'SuperAdministrador')
 }
 
 export interface SidebarMenuResponse { // Renombrado para claridad (antes MenuResponse)

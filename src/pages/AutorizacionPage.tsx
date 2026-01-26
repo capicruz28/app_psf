@@ -139,9 +139,18 @@ const AutorizacionPage: React.FC = () => {
 
   // Cargar lista de pendientes
   const fetchPendientes = async () => {
+    // No hacer llamadas si es superadmin o no tiene codigo_trabajador_externo
+    const isSuperAdmin = auth.user?.nombre_usuario?.toLowerCase() === 'superadmin';
+    const hasCodigoTrabajador = auth.user?.codigo_trabajador_externo?.trim();
+    
+    if (isSuperAdmin || !hasCodigoTrabajador) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const data = await getPendientesAutorizacion(auth.user?.codigo_trabajador_externo || "");
+      const data = await getPendientesAutorizacion(hasCodigoTrabajador);
       setPendientes(data);
     } catch (err) {
       toast.error("Error al cargar pendientes de autorización.");
@@ -153,7 +162,7 @@ const AutorizacionPage: React.FC = () => {
 
   useEffect(() => {
     fetchPendientes();
-  }, []);
+  }, [auth.user]);
 
   // Resetear página cuando cambie el término de búsqueda
   useEffect(() => {

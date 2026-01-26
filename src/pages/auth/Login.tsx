@@ -24,6 +24,37 @@ const Login: React.FC = () => { // Añadir tipo explícito React.FC
   const from = location.state?.from?.pathname; // Página desde la que se llegó a /login (si aplica)
   const defaultHome = "/home"; // Página por defecto para usuarios normales
   const adminHome = "/admin/usuarios"; // Página por defecto para administradores
+  const superAdminHome = "/admin/vacaciones"; // Página por defecto para superadministradores
+
+  // Función helper para detectar si el usuario es superadmin
+  const isSuperAdmin = (userData: UserData): boolean => {
+    // Verificar por nombre de usuario si roles está vacío
+    if (userData.nombre_usuario?.toLowerCase() === 'superadmin') {
+      return true;
+    }
+    
+    // Si no hay roles, no es superadmin (excepto si ya se detectó por nombre de usuario)
+    if (!userData.roles?.length) {
+      return false;
+    }
+    
+    const userRoles = userData.roles.map(r => r.toLowerCase().trim());
+    const superAdminVariations = [
+      'superadministrador',
+      'super_admin',
+      'superadmin',
+      'super administrador',
+      'super-administrador',
+      'super_administrador',
+    ];
+    
+    // Verificar si alguno de los roles del usuario contiene "super" y "admin"
+    return superAdminVariations.some(variation => userRoles.includes(variation)) ||
+           userRoles.some(role => 
+             (role.includes('super') && role.includes('admin')) ||
+             role === 'superadmin'
+           );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,18 +79,25 @@ const Login: React.FC = () => { // Añadir tipo explícito React.FC
         toast.success('¡Bienvenido!', { duration: 3000, position: 'top-right' });
 
         // 4. Determinar la ruta de redirección basada en roles
-        const userRoles = userData.roles || []; // Asegurarse de que roles sea un array
         let destination: string;
 
-        if (userRoles.includes('Administrador')) {
-          // Si es admin, redirigir a la página principal de admin
-          destination = adminHome;
-          console.log('Admin user detected, navigating to', destination);
+        // Prioridad 1: Verificar si es superadmin (siempre redirigir a su página, ignorando ruta anterior)
+        if (isSuperAdmin(userData)) {
+          destination = superAdminHome;
+          console.log('SuperAdmin user detected, navigating to', destination);
         } else {
-          // Si no es admin, redirigir a la página de origen ('from') si existe y no es /login o /unauthorized,
-          // de lo contrario, redirigir a la página principal por defecto.
-          destination = (from && from !== '/login' && from !== '/unauthorized') ? from : defaultHome;
-          console.log(`Normal user detected, navigating to ${destination} (from: ${from})`);
+          const userRoles = userData.roles || []; // Asegurarse de que roles sea un array
+          
+          if (userRoles.includes('Administrador')) {
+            // Si es admin, redirigir a la página principal de admin
+            destination = adminHome;
+            console.log('Admin user detected, navigating to', destination);
+          } else {
+            // Si no es admin, redirigir a la página de origen ('from') si existe y no es /login o /unauthorized,
+            // de lo contrario, redirigir a la página principal por defecto.
+            destination = (from && from !== '/login' && from !== '/unauthorized') ? from : defaultHome;
+            console.log(`Normal user detected, navigating to ${destination} (from: ${from})`);
+          }
         }
 
         // 5. Realizar la redirección
