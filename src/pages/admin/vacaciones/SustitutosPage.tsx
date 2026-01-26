@@ -18,9 +18,8 @@ import { ACTIVO_INACTIVO_OPTIONS } from '../../../types/vacaciones.types';
 const SustitutosPage: React.FC = () => {
   const [sustitutos, setSustitutos] = useState<Sustituto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const limit = 10;
+  const currentPage = 1; // Página fija ya que el backend no devuelve paginación
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSustituto, setEditingSustituto] = useState<Sustituto | null>(null);
@@ -39,13 +38,11 @@ const SustitutosPage: React.FC = () => {
       const response = await getSustitutos(currentPage, limit);
       // Asegurar que siempre sea un array
       setSustitutos(response.sustitutos || []);
-      setTotalPages(response.total_pages || 1);
     } catch (error) {
       const errorInfo = getErrorMessage(error);
       toast.error(errorInfo.message || 'Error al cargar sustitutos');
       // Asegurar que siempre sea un array incluso en caso de error
       setSustitutos([]);
-      setTotalPages(1);
     } finally {
       setIsLoading(false);
     }

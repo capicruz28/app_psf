@@ -1,8 +1,7 @@
 // src/services/vacaciones.service.ts
 
 import api from './api';
-import type {
-  Solicitud,
+import type {  
   SolicitudWithDetails,
   PaginatedSolicitudesResponse,
   SolicitudesFilters,
@@ -18,10 +17,8 @@ import type {
   SustitutoCreate,
   SustitutoUpdate,
   PaginatedSustitutosResponse,
-  Estadisticas,
-  SaldoVacaciones,
-  PaginatedSaldosResponse,
-  AnularSolicitudRequest,
+  Estadisticas,  
+  PaginatedSaldosResponse,  
   AnularSolicitudResponse,
   AreaItem,
   SeccionItem,

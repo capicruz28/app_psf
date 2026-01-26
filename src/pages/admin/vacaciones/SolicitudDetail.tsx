@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { 
-  X, 
+import {   
   Calendar, 
   User, 
   FileText, 
@@ -45,15 +44,6 @@ const SolicitudDetail: React.FC<SolicitudDetailProps> = ({
   const [motivoAnulacion, setMotivoAnulacion] = useState('');
   const [isAnulando, setIsAnulando] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && solicitudId) {
-      fetchSolicitud();
-    } else {
-      setSolicitud(null);
-      setMotivoAnulacion('');
-    }
-  }, [isOpen, solicitudId]);
-
   const fetchSolicitud = async () => {
     if (!solicitudId) return;
     
@@ -69,6 +59,16 @@ const SolicitudDetail: React.FC<SolicitudDetailProps> = ({
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isOpen && solicitudId) {
+      fetchSolicitud();
+    } else {
+      setSolicitud(null);
+      setMotivoAnulacion('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, solicitudId]);
 
   const handleAnular = async () => {
     if (!solicitudId || !motivoAnulacion.trim()) {

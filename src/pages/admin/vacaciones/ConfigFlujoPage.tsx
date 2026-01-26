@@ -22,9 +22,8 @@ import AutocompleteSearch, { AutocompleteOption } from '../../../components/ui/A
 const ConfigFlujoPage: React.FC = () => {
   const [configs, setConfigs] = useState<ConfigFlujo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const limit = 10;
+  const currentPage = 1; // P?gina fija ya que el backend no devuelve paginaci?n
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState<ConfigFlujo | null>(null);
@@ -35,7 +34,7 @@ const ConfigFlujoPage: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Estados para los campos de búsqueda
+  // Estados para los campos de b?squeda
   const [searchArea, setSearchArea] = useState('');
   const [searchSeccion, setSearchSeccion] = useState('');
   const [searchCargo, setSearchCargo] = useState('');
@@ -51,7 +50,7 @@ const ConfigFlujoPage: React.FC = () => {
         configsData.map(async (config) => {
           const enriquecida = { ...config };
           
-          // Buscar descripción de área si no está disponible
+          // Buscar descripci?n de ?rea si no est? disponible
           if (config.codigo_area && !config.area_nombre) {
             try {
               const areaResponse = await buscarAreas({ codigo: config.codigo_area.trim(), limit: 1 });
@@ -59,11 +58,11 @@ const ConfigFlujoPage: React.FC = () => {
                 enriquecida.area_nombre = areaResponse.items[0].descripcion;
               }
             } catch (error) {
-              console.error('Error buscando área:', error);
+              console.error('Error buscando ?rea:', error);
             }
           }
           
-          // Buscar descripción de sección si no está disponible
+          // Buscar descripci?n de secci?n si no est? disponible
           if (config.codigo_seccion && !config.seccion_nombre) {
             try {
               const seccionResponse = await buscarSecciones({ codigo: config.codigo_seccion.trim(), limit: 1 });
@@ -71,11 +70,11 @@ const ConfigFlujoPage: React.FC = () => {
                 enriquecida.seccion_nombre = seccionResponse.items[0].descripcion;
               }
             } catch (error) {
-              console.error('Error buscando sección:', error);
+              console.error('Error buscando secci?n:', error);
             }
           }
           
-          // Buscar descripción de cargo si no está disponible
+          // Buscar descripci?n de cargo si no est? disponible
           if (config.codigo_cargo && !config.cargo_nombre) {
             try {
               const cargoResponse = await buscarCargos({ codigo: config.codigo_cargo.trim(), limit: 1 });
@@ -92,13 +91,11 @@ const ConfigFlujoPage: React.FC = () => {
       );
       
       setConfigs(configsEnriquecidas);
-      setTotalPages(response.total_pages || 1);
     } catch (error) {
       const errorInfo = getErrorMessage(error);
       toast.error(errorInfo.message || 'Error al cargar configuraciones');
       // Asegurar que siempre sea un array incluso en caso de error
       setConfigs([]);
-      setTotalPages(1);
     } finally {
       setIsLoading(false);
     }
@@ -127,12 +124,12 @@ const ConfigFlujoPage: React.FC = () => {
         descripcion: config.descripcion || undefined,
       });
       
-      // Buscar descripciones si no están disponibles
+      // Buscar descripciones si no est?n disponibles
       let areaLabel = config.codigo_area?.trim() || '';
       let seccionLabel = config.codigo_seccion?.trim() || '';
       let cargoLabel = config.codigo_cargo?.trim() || '';
       
-      // Buscar descripción de área si no está disponible
+      // Buscar descripci?n de ?rea si no est? disponible
       if (config.codigo_area && !config.area_nombre) {
         try {
           const areaResponse = await buscarAreas({ codigo: config.codigo_area.trim(), limit: 1 });
@@ -140,13 +137,13 @@ const ConfigFlujoPage: React.FC = () => {
             areaLabel = `${areaResponse.items[0].codigo} - ${areaResponse.items[0].descripcion}`;
           }
         } catch (error) {
-          console.error('Error buscando área:', error);
+          console.error('Error buscando ?rea:', error);
         }
       } else if (config.codigo_area && config.area_nombre) {
         areaLabel = `${config.codigo_area.trim()} - ${config.area_nombre}`;
       }
       
-      // Buscar descripción de sección si no está disponible
+      // Buscar descripci?n de secci?n si no est? disponible
       if (config.codigo_seccion && !config.seccion_nombre) {
         try {
           const seccionResponse = await buscarSecciones({ codigo: config.codigo_seccion.trim(), limit: 1 });
@@ -154,13 +151,13 @@ const ConfigFlujoPage: React.FC = () => {
             seccionLabel = `${seccionResponse.items[0].codigo} - ${seccionResponse.items[0].descripcion}`;
           }
         } catch (error) {
-          console.error('Error buscando sección:', error);
+          console.error('Error buscando secci?n:', error);
         }
       } else if (config.codigo_seccion && config.seccion_nombre) {
         seccionLabel = `${config.codigo_seccion.trim()} - ${config.seccion_nombre}`;
       }
       
-      // Buscar descripción de cargo si no está disponible
+      // Buscar descripci?n de cargo si no est? disponible
       if (config.codigo_cargo && !config.cargo_nombre) {
         try {
           const cargoResponse = await buscarCargos({ codigo: config.codigo_cargo.trim(), limit: 1 });
@@ -184,7 +181,7 @@ const ConfigFlujoPage: React.FC = () => {
         niveles_requeridos: 2,
         activo: 'S',
       });
-      // Limpiar campos de búsqueda
+      // Limpiar campos de b?squeda
       setSearchArea('');
       setSearchSeccion('');
       setSearchCargo('');
@@ -200,13 +197,13 @@ const ConfigFlujoPage: React.FC = () => {
       niveles_requeridos: 2,
       activo: 'S',
     });
-    // Limpiar campos de búsqueda
+    // Limpiar campos de b?squeda
     setSearchArea('');
     setSearchSeccion('');
     setSearchCargo('');
   };
 
-  // Funciones de búsqueda para autocompletado
+  // Funciones de b?squeda para autocompletado
   const searchAreas = useCallback(async (query: string): Promise<AutocompleteOption[]> => {
     try {
       const trimmedQuery = query.trim();
@@ -214,7 +211,7 @@ const ConfigFlujoPage: React.FC = () => {
       
       let filters: any = { limit: 20 };
       
-      // Si el query tiene formato "codigo - descripcion", extraer solo la descripción
+      // Si el query tiene formato "codigo - descripcion", extraer solo la descripci?n
       if (trimmedQuery.includes(' - ')) {
         const parts = trimmedQuery.split(' - ');
         if (parts.length > 1) {
@@ -223,8 +220,8 @@ const ConfigFlujoPage: React.FC = () => {
           filters.descripcion = trimmedQuery;
         }
       } else {
-        // Buscar siempre por descripción ya que el backend hace "contains" en descripción
-        // Esto permite encontrar códigos parciales (ej: "3" encuentra "03") y descripciones
+        // Buscar siempre por descripci?n ya que el backend hace "contains" en descripci?n
+        // Esto permite encontrar c?digos parciales (ej: "3" encuentra "03") y descripciones
         filters.descripcion = trimmedQuery;
       }
       
@@ -235,7 +232,7 @@ const ConfigFlujoPage: React.FC = () => {
         subtitle: item.descripcion,
       }));
     } catch (error) {
-      console.error('Error buscando áreas:', error);
+      console.error('Error buscando ?reas:', error);
       return [];
     }
   }, []);
@@ -255,7 +252,7 @@ const ConfigFlujoPage: React.FC = () => {
           filters.descripcion = trimmedQuery;
         }
       } else {
-        // Buscar siempre por descripción ya que el backend hace "contains"
+        // Buscar siempre por descripci?n ya que el backend hace "contains"
         filters.descripcion = trimmedQuery;
       }
       
@@ -286,7 +283,7 @@ const ConfigFlujoPage: React.FC = () => {
           filters.descripcion = trimmedQuery;
         }
       } else {
-        // Buscar siempre por descripción ya que el backend hace "contains"
+        // Buscar siempre por descripci?n ya que el backend hace "contains"
         filters.descripcion = trimmedQuery;
       }
       
@@ -309,31 +306,31 @@ const ConfigFlujoPage: React.FC = () => {
     try {
       if (editingConfig) {
         await updateConfigFlujo(editingConfig.id_config, formData as ConfigFlujoUpdate);
-        toast.success('Configuración actualizada exitosamente');
+        toast.success('Configuraci?n actualizada exitosamente');
       } else {
         await createConfigFlujo(formData);
-        toast.success('Configuración creada exitosamente');
+        toast.success('Configuraci?n creada exitosamente');
       }
       handleCloseModal();
       fetchConfigs();
     } catch (error) {
       const errorInfo = getErrorMessage(error);
-      toast.error(errorInfo.message || 'Error al guardar configuración');
+      toast.error(errorInfo.message || 'Error al guardar configuraci?n');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('¿Está seguro que desea eliminar esta configuración?')) return;
+    if (!confirm('?Est? seguro que desea eliminar esta configuraci?n?')) return;
 
     try {
       await deleteConfigFlujo(id);
-      toast.success('Configuración eliminada exitosamente');
+      toast.success('Configuraci?n eliminada exitosamente');
       fetchConfigs();
     } catch (error) {
       const errorInfo = getErrorMessage(error);
-      toast.error(errorInfo.message || 'Error al eliminar configuración');
+      toast.error(errorInfo.message || 'Error al eliminar configuraci?n');
     }
   };
 
@@ -341,11 +338,11 @@ const ConfigFlujoPage: React.FC = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Configuración de Flujos
+          Configuraci?n de Flujos
         </h2>
         <Button onClick={() => handleOpenModal()} className="flex items-center gap-2">
           <Plus className="w-4 h-4" />
-          Nueva Configuración
+          Nueva Configuraci?n
         </Button>
       </div>
 
@@ -359,11 +356,11 @@ const ConfigFlujoPage: React.FC = () => {
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Área</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sección</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">?rea</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Secci?n</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cargo</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Días Desde</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Días Hasta</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">D?as Desde</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">D?as Hasta</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Niveles</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
@@ -450,10 +447,10 @@ const ConfigFlujoPage: React.FC = () => {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingConfig ? 'Editar Configuración' : 'Nueva Configuración'}
+              {editingConfig ? 'Editar Configuraci?n' : 'Nueva Configuraci?n'}
             </DialogTitle>
             <DialogDescription>
-              Configure las reglas de aprobación para solicitudes
+              Configure las reglas de aprobaci?n para solicitudes
             </DialogDescription>
           </DialogHeader>
 
@@ -488,7 +485,7 @@ const ConfigFlujoPage: React.FC = () => {
 
               <div>
                 <AutocompleteSearch
-                  label="Área"
+                  label="?rea"
                   value={searchArea}
                   onChange={(value) => {
                     setSearchArea(value);
@@ -501,14 +498,14 @@ const ConfigFlujoPage: React.FC = () => {
                     setSearchArea(option.label);
                   }}
                   onSearch={searchAreas}
-                  placeholder="Buscar área (dejar vacío para todas)..."
+                  placeholder="Buscar ?rea (dejar vac?o para todas)..."
                   minChars={2}
                 />
               </div>
 
               <div>
                 <AutocompleteSearch
-                  label="Sección"
+                  label="Secci?n"
                   value={searchSeccion}
                   onChange={(value) => {
                     setSearchSeccion(value);
@@ -521,7 +518,7 @@ const ConfigFlujoPage: React.FC = () => {
                     setSearchSeccion(option.label);
                   }}
                   onSearch={searchSecciones}
-                  placeholder="Buscar sección (dejar vacío para todas)..."
+                  placeholder="Buscar secci?n (dejar vac?o para todas)..."
                   minChars={2}
                 />
               </div>
@@ -541,32 +538,32 @@ const ConfigFlujoPage: React.FC = () => {
                     setSearchCargo(option.label);
                   }}
                   onSearch={searchCargos}
-                  placeholder="Buscar cargo (dejar vacío para todos)..."
+                  placeholder="Buscar cargo (dejar vac?o para todos)..."
                   minChars={2}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Días Desde</label>
+                <label className="block text-sm font-medium mb-1">D?as Desde</label>
                 <input
                   type="number"
                   min="0"
                   value={formData.dias_desde || ''}
                   onChange={(e) => setFormData({ ...formData, dias_desde: e.target.value ? parseInt(e.target.value) : undefined })}
                   className="w-full px-3 py-2 border rounded-lg"
-                  placeholder="Mínimo"
+                  placeholder="M?nimo"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Días Hasta</label>
+                <label className="block text-sm font-medium mb-1">D?as Hasta</label>
                 <input
                   type="number"
                   min="0"
                   value={formData.dias_hasta || ''}
                   onChange={(e) => setFormData({ ...formData, dias_hasta: e.target.value ? parseInt(e.target.value) : undefined })}
                   className="w-full px-3 py-2 border rounded-lg"
-                  placeholder="Máximo"
+                  placeholder="M?ximo"
                 />
               </div>
 
@@ -584,13 +581,13 @@ const ConfigFlujoPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Descripción</label>
+                <label className="block text-sm font-medium mb-1">Descripci?n</label>
                 <input
                   type="text"
                   value={formData.descripcion || ''}
                   onChange={(e) => setFormData({ ...formData, descripcion: e.target.value || undefined })}
                   className="w-full px-3 py-2 border rounded-lg"
-                  placeholder="Descripción opcional"
+                  placeholder="Descripci?n opcional"
                 />
               </div>
             </div>

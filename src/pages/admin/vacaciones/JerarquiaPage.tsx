@@ -23,9 +23,8 @@ import AutocompleteSearch, { AutocompleteOption } from '../../../components/ui/A
 const JerarquiaPage: React.FC = () => {
   const [jerarquias, setJerarquias] = useState<Jerarquia[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const limit = 10;
+  const currentPage = 1; // Página fija ya que el backend no devuelve paginación
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingJerarquia, setEditingJerarquia] = useState<Jerarquia | null>(null);
@@ -95,13 +94,11 @@ const JerarquiaPage: React.FC = () => {
       );
       
       setJerarquias(jerarquiasEnriquecidas);
-      setTotalPages(response.total_pages || 1);
     } catch (error) {
       const errorInfo = getErrorMessage(error);
       toast.error(errorInfo.message || 'Error al cargar jerarquías');
       // Asegurar que siempre sea un array incluso en caso de error
       setJerarquias([]);
-      setTotalPages(1);
     } finally {
       setIsLoading(false);
     }
@@ -216,7 +213,7 @@ const JerarquiaPage: React.FC = () => {
   };
 
   // Funciones de búsqueda para autocompletado
-  const searchAreas = async (query: string): Promise<AutocompleteOption[]> => {
+  const searchAreas = useCallback(async (query: string): Promise<AutocompleteOption[]> => {
     try {
       const trimmedQuery = query.trim();
       if (!trimmedQuery) return [];
@@ -247,9 +244,9 @@ const JerarquiaPage: React.FC = () => {
       console.error('Error buscando áreas:', error);
       return [];
     }
-  };
+  }, []);
 
-  const searchSecciones = async (query: string): Promise<AutocompleteOption[]> => {
+  const searchSecciones = useCallback(async (query: string): Promise<AutocompleteOption[]> => {
     try {
       const trimmedQuery = query.trim();
       if (!trimmedQuery) return [];
@@ -278,9 +275,9 @@ const JerarquiaPage: React.FC = () => {
       console.error('Error buscando secciones:', error);
       return [];
     }
-  };
+  }, []);
 
-  const searchCargos = async (query: string): Promise<AutocompleteOption[]> => {
+  const searchCargos = useCallback(async (query: string): Promise<AutocompleteOption[]> => {
     try {
       const trimmedQuery = query.trim();
       if (!trimmedQuery) return [];
@@ -309,9 +306,9 @@ const JerarquiaPage: React.FC = () => {
       console.error('Error buscando cargos:', error);
       return [];
     }
-  };
+  }, []);
 
-  const searchTrabajadores = async (query: string): Promise<AutocompleteOption[]> => {
+  const searchTrabajadores = useCallback(async (query: string): Promise<AutocompleteOption[]> => {
     try {
       // Buscar por código si parece ser un código (solo números), sino por nombre
       const filters: any = {
@@ -335,7 +332,7 @@ const JerarquiaPage: React.FC = () => {
       console.error('Error buscando trabajadores:', error);
       return [];
     }
-  };
+  }, [formData.codigo_area]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

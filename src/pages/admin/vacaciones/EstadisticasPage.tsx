@@ -1,8 +1,8 @@
 // src/pages/admin/vacaciones/EstadisticasPage.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
-import { RefreshCw, Calendar, TrendingUp, FileText, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { RefreshCw, Calendar, FileText, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { getEstadisticas } from '../../../services/vacaciones.service';
 import type { Estadisticas } from '../../../types/vacaciones.types';
 import { Button } from '../../../components/ui/button';
@@ -14,7 +14,7 @@ const EstadisticasPage: React.FC = () => {
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
 
-  const fetchEstadisticas = async () => {
+  const fetchEstadisticas = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await getEstadisticas(
@@ -61,11 +61,11 @@ const EstadisticasPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [fechaDesde, fechaHasta]);
 
   useEffect(() => {
     fetchEstadisticas();
-  }, []);
+  }, [fetchEstadisticas]);
 
   const handleApplyFilters = () => {
     fetchEstadisticas();

@@ -6,12 +6,10 @@ import {
   Search, 
   Filter, 
   Eye, 
-  XCircle, 
   RefreshCw, 
   ChevronLeft, 
   ChevronRight,
   Calendar,
-  User,
   FileText
 } from 'lucide-react';
 import { getSolicitudes, buscarTrabajadores } from '../../../services/vacaciones.service';

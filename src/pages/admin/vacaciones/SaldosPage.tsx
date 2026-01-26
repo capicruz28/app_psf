@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
-import { RefreshCw, Search, Calendar, TrendingDown, TrendingUp } from 'lucide-react';
+import { RefreshCw, Calendar, TrendingDown, TrendingUp } from 'lucide-react';
 import { getSaldos } from '../../../services/vacaciones.service';
 import type { SaldoVacaciones } from '../../../types/vacaciones.types';
 import { Button } from '../../../components/ui/button';
