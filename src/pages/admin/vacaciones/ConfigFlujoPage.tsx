@@ -181,7 +181,7 @@ const ConfigFlujoPage: React.FC = () => {
         niveles_requeridos: 2,
         activo: 'S',
       });
-      // Limpiar campos de b?squeda
+      // Limpiar campos de búsqueda
       setSearchArea('');
       setSearchSeccion('');
       setSearchCargo('');
@@ -203,7 +203,7 @@ const ConfigFlujoPage: React.FC = () => {
     setSearchCargo('');
   };
 
-  // Funciones de b?squeda para autocompletado
+  // Funciones de búsqueda para autocompletado
   const searchAreas = useCallback(async (query: string): Promise<AutocompleteOption[]> => {
     try {
       const trimmedQuery = query.trim();
@@ -211,7 +211,7 @@ const ConfigFlujoPage: React.FC = () => {
       
       let filters: any = { limit: 20 };
       
-      // Si el query tiene formato "codigo - descripcion", extraer solo la descripci?n
+      // Si el query tiene formato "codigo - descripcion", extraer solo la descripción
       if (trimmedQuery.includes(' - ')) {
         const parts = trimmedQuery.split(' - ');
         if (parts.length > 1) {
@@ -220,8 +220,8 @@ const ConfigFlujoPage: React.FC = () => {
           filters.descripcion = trimmedQuery;
         }
       } else {
-        // Buscar siempre por descripci?n ya que el backend hace "contains" en descripci?n
-        // Esto permite encontrar c?digos parciales (ej: "3" encuentra "03") y descripciones
+        // Buscar siempre por descripción ya que el backend hace "contains" en descripción
+        // Esto permite encontrar códigos parciales (ej: "3" encuentra "03") y descripciones
         filters.descripcion = trimmedQuery;
       }
       
@@ -232,7 +232,7 @@ const ConfigFlujoPage: React.FC = () => {
         subtitle: item.descripcion,
       }));
     } catch (error) {
-      console.error('Error buscando ?reas:', error);
+      console.error('Error buscando áreas:', error);
       return [];
     }
   }, []);
@@ -252,7 +252,7 @@ const ConfigFlujoPage: React.FC = () => {
           filters.descripcion = trimmedQuery;
         }
       } else {
-        // Buscar siempre por descripci?n ya que el backend hace "contains"
+        // Buscar siempre por descripción ya que el backend hace "contains"
         filters.descripcion = trimmedQuery;
       }
       
@@ -283,7 +283,7 @@ const ConfigFlujoPage: React.FC = () => {
           filters.descripcion = trimmedQuery;
         }
       } else {
-        // Buscar siempre por descripci?n ya que el backend hace "contains"
+        // Buscar siempre por descripción ya que el backend hace "contains"
         filters.descripcion = trimmedQuery;
       }
       
@@ -306,31 +306,31 @@ const ConfigFlujoPage: React.FC = () => {
     try {
       if (editingConfig) {
         await updateConfigFlujo(editingConfig.id_config, formData as ConfigFlujoUpdate);
-        toast.success('Configuraci?n actualizada exitosamente');
+        toast.success('Configuración actualizada exitosamente');
       } else {
         await createConfigFlujo(formData);
-        toast.success('Configuraci?n creada exitosamente');
+        toast.success('Configuración creada exitosamente');
       }
       handleCloseModal();
       fetchConfigs();
     } catch (error) {
       const errorInfo = getErrorMessage(error);
-      toast.error(errorInfo.message || 'Error al guardar configuraci?n');
+      toast.error(errorInfo.message || 'Error al guardar configuración');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('?Est? seguro que desea eliminar esta configuraci?n?')) return;
+    if (!confirm('¿Está seguro que desea eliminar esta configuración?')) return;
 
     try {
       await deleteConfigFlujo(id);
-      toast.success('Configuraci?n eliminada exitosamente');
+      toast.success('Configuración eliminada exitosamente');
       fetchConfigs();
     } catch (error) {
       const errorInfo = getErrorMessage(error);
-      toast.error(errorInfo.message || 'Error al eliminar configuraci?n');
+      toast.error(errorInfo.message || 'Error al eliminar configuración');
     }
   };
 
@@ -338,11 +338,11 @@ const ConfigFlujoPage: React.FC = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Configuraci?n de Flujos
+          Configuración de Flujos
         </h2>
         <Button onClick={() => handleOpenModal()} className="flex items-center gap-2">
           <Plus className="w-4 h-4" />
-          Nueva Configuraci?n
+          Nueva Configuración
         </Button>
       </div>
 
@@ -356,11 +356,11 @@ const ConfigFlujoPage: React.FC = () => {
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">?rea</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Secci?n</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Área</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sección</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cargo</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">D?as Desde</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">D?as Hasta</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Días Desde</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Días Hasta</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Niveles</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
@@ -447,10 +447,10 @@ const ConfigFlujoPage: React.FC = () => {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingConfig ? 'Editar Configuraci?n' : 'Nueva Configuraci?n'}
+              {editingConfig ? 'Editar Configuración' : 'Nueva Configuración'}
             </DialogTitle>
             <DialogDescription>
-              Configure las reglas de aprobaci?n para solicitudes
+              Configure las reglas de aprobación para solicitudes
             </DialogDescription>
           </DialogHeader>
 
@@ -485,7 +485,7 @@ const ConfigFlujoPage: React.FC = () => {
 
               <div>
                 <AutocompleteSearch
-                  label="?rea"
+                  label="Área"
                   value={searchArea}
                   onChange={(value) => {
                     setSearchArea(value);
@@ -498,14 +498,14 @@ const ConfigFlujoPage: React.FC = () => {
                     setSearchArea(option.label);
                   }}
                   onSearch={searchAreas}
-                  placeholder="Buscar ?rea (dejar vac?o para todas)..."
+                  placeholder="Buscar área (dejar vacío para todas)..."
                   minChars={2}
                 />
               </div>
 
               <div>
                 <AutocompleteSearch
-                  label="Secci?n"
+                  label="Sección"
                   value={searchSeccion}
                   onChange={(value) => {
                     setSearchSeccion(value);
@@ -518,7 +518,7 @@ const ConfigFlujoPage: React.FC = () => {
                     setSearchSeccion(option.label);
                   }}
                   onSearch={searchSecciones}
-                  placeholder="Buscar secci?n (dejar vac?o para todas)..."
+                  placeholder="Buscar sección (dejar vacío para todas)..."
                   minChars={2}
                 />
               </div>
@@ -538,32 +538,32 @@ const ConfigFlujoPage: React.FC = () => {
                     setSearchCargo(option.label);
                   }}
                   onSearch={searchCargos}
-                  placeholder="Buscar cargo (dejar vac?o para todos)..."
+                  placeholder="Buscar cargo (dejar vacío para todos)..."
                   minChars={2}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">D?as Desde</label>
+                <label className="block text-sm font-medium mb-1">Días Desde</label>
                 <input
                   type="number"
                   min="0"
                   value={formData.dias_desde || ''}
                   onChange={(e) => setFormData({ ...formData, dias_desde: e.target.value ? parseInt(e.target.value) : undefined })}
                   className="w-full px-3 py-2 border rounded-lg"
-                  placeholder="M?nimo"
+                  placeholder="Mínimo"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">D?as Hasta</label>
+                <label className="block text-sm font-medium mb-1">Días Hasta</label>
                 <input
                   type="number"
                   min="0"
                   value={formData.dias_hasta || ''}
                   onChange={(e) => setFormData({ ...formData, dias_hasta: e.target.value ? parseInt(e.target.value) : undefined })}
                   className="w-full px-3 py-2 border rounded-lg"
-                  placeholder="M?ximo"
+                  placeholder="Máximo"
                 />
               </div>
 
@@ -581,13 +581,13 @@ const ConfigFlujoPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Descripci?n</label>
+                <label className="block text-sm font-medium mb-1">Descripción</label>
                 <input
                   type="text"
                   value={formData.descripcion || ''}
                   onChange={(e) => setFormData({ ...formData, descripcion: e.target.value || undefined })}
                   className="w-full px-3 py-2 border rounded-lg"
-                  placeholder="Descripci?n opcional"
+                  placeholder="Descripción opcional"
                 />
               </div>
             </div>
