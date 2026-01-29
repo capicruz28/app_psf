@@ -356,7 +356,7 @@ const generarResumenPDF = useCallback(() => {
 
     // 1. Cabecera y Pie de Página del Resumen - MODIFICADA
     const addHeaderFooterResumen = (data: any) => {
-        doc.addImage("/psf.png", "PNG", 10, 5, 30, 12);
+        doc.addImage("/psf_ok.png", "PNG", 10, 5, 30, 12);
         doc.setFontSize(16);
         doc.text("Resumen de Reporte de Destajo", doc.internal.pageSize.getWidth() / 2, 15, { align: "center" });
 
@@ -441,7 +441,7 @@ const generarResumenPDF = useCallback(() => {
                         targetItem.estado_autorizado === "A" ? "APROBADO" : "RECHAZADO";
 
     const addHeaderFooter = (data: any) => {
-      doc.addImage("/psf.png", "PNG", 10, 5, 30, 12);
+      doc.addImage("/psf_ok.png", "PNG", 10, 5, 30, 12);
       doc.setFontSize(16);
       doc.text("Reporte de Destajo", doc.internal.pageSize.getWidth() / 2, 15, { align: "center" });
       
