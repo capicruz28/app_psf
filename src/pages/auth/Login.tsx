@@ -81,22 +81,47 @@ const Login: React.FC = () => { // Añadir tipo explícito React.FC
         // 4. Determinar la ruta de redirección basada en roles
         let destination: string;
 
+        // Rutas que siempre deben ser ignoradas al hacer login
+        const invalidRedirectPaths = ['/login', '/unauthorized', '/logout'];
+        const shouldIgnoreFrom = !from || invalidRedirectPaths.includes(from);
+
+        // Logging detallado para depuración
+        console.log('🔍 Login - UserData:', {
+          nombre_usuario: userData.nombre_usuario,
+          roles: userData.roles,
+          roles_length: userData.roles?.length || 0,
+          from: from,
+          shouldIgnoreFrom: shouldIgnoreFrom
+        });
+
         // Prioridad 1: Verificar si es superadmin (siempre redirigir a su página, ignorando ruta anterior)
         if (isSuperAdmin(userData)) {
           destination = superAdminHome;
-          console.log('SuperAdmin user detected, navigating to', destination);
+          console.log('✅ SuperAdmin user detected, navigating to', destination);
         } else {
           const userRoles = userData.roles || []; // Asegurarse de que roles sea un array
           
-          if (userRoles.includes('Administrador')) {
+          // Normalizar roles para comparación (case-insensitive)
+          const normalizedRoles = userRoles.map(r => r.toLowerCase().trim());
+          const isAdmin = normalizedRoles.includes('administrador') || normalizedRoles.includes('admin');
+          
+          console.log('🔍 Checking admin role:', {
+            userRoles: userRoles,
+            normalizedRoles: normalizedRoles,
+            isAdmin: isAdmin
+          });
+          
+          if (isAdmin) {
             // Si es admin, redirigir a la página principal de admin
             destination = adminHome;
-            console.log('Admin user detected, navigating to', destination);
+            console.log('✅ Admin user detected, navigating to', destination);
           } else {
-            // Si no es admin, redirigir a la página de origen ('from') si existe y no es /login o /unauthorized,
+            // Si no es admin, redirigir a la página de origen ('from') solo si es válida,
             // de lo contrario, redirigir a la página principal por defecto.
-            destination = (from && from !== '/login' && from !== '/unauthorized') ? from : defaultHome;
-            console.log(`Normal user detected, navigating to ${destination} (from: ${from})`);
+            // IMPORTANTE: Si el usuario viene de /unauthorized, siempre ir a /home
+            // porque significa que antes no tenía roles y ahora sí los tiene
+            destination = shouldIgnoreFrom ? defaultHome : from;
+            console.log(`ℹ️ Normal user detected, navigating to ${destination} (from: ${from}, ignored: ${shouldIgnoreFrom})`);
           }
         }
 

@@ -54,6 +54,7 @@ const MobileFormSection = React.memo(({
   setHoraFin,
   tipoValor,
   setTipoValor,
+  tipoLocked,
   valorInput,
   setValorInput,
   prorratear,
@@ -70,6 +71,7 @@ const MobileFormSection = React.memo(({
   setHoraFin: (value: string) => void;
   tipoValor: "horas" | "kilos";
   setTipoValor: (value: "horas" | "kilos") => void;
+  tipoLocked: boolean;
   valorInput: number;
   setValorInput: (value: number) => void;
   prorratear: boolean;
@@ -159,7 +161,8 @@ const MobileFormSection = React.memo(({
                 <select
                   value={tipoValor}
                   onChange={(e) => setTipoValor(e.target.value as "horas" | "kilos")}
-                  className="border rounded w-full p-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500"
+                  disabled={tipoLocked}
+                  className="border rounded w-full p-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <option value="horas">Horas</option>
                   <option value="kilos">Kilos</option>
@@ -304,6 +307,11 @@ const FinalizarTareoPage: React.FC = () => {
     );
   }, [pendientes, selectedRow]);
 
+  const cosCosteo = React.useMemo(() => detalle[0]?.cos_costeo ?? undefined, [detalle]);
+  const tipoLocked = cosCosteo === "02" || cosCosteo === "03";
+  const effectiveTipo: "horas" | "kilos" =
+    cosCosteo === "02" ? "kilos" : cosCosteo === "03" ? "horas" : tipoValor;
+
   const toggleCardExpansion = useCallback((key: string) => {
     setExpandedCards(prev => {
       const updated = new Set(prev);
@@ -371,6 +379,8 @@ const FinalizarTareoPage: React.FC = () => {
           detalle_observacion: d.detalle_observacion || "",
         }))
       );
+      if (first.cos_costeo === "02") setTipoValor("kilos");
+      else if (first.cos_costeo === "03") setTipoValor("horas");
     } else {
       setHoraInicio("");
       setHoraFin("");
@@ -666,7 +676,8 @@ const FinalizarTareoPage: React.FC = () => {
                     <select
                       value={tipoValor}
                       onChange={(e) => setTipoValor(e.target.value as any)}
-                      className="border rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      disabled={tipoLocked}
+                      className="border rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <option value="horas">Horas</option>
                       <option value="kilos">Kilos</option>
@@ -784,7 +795,9 @@ const FinalizarTareoPage: React.FC = () => {
                               const target = e.currentTarget;
                               setTimeout(() => target.select(), 0);
                             }}
-                            className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            readOnly={effectiveTipo === "kilos"}
+                            disabled={effectiveTipo === "kilos"}
+                            className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
                           />
                         </td>
                         <td className="px-2 py-1">
@@ -819,7 +832,9 @@ const FinalizarTareoPage: React.FC = () => {
                               const target = e.currentTarget;
                               setTimeout(() => target.select(), 0);
                             }}
-                            className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            readOnly={effectiveTipo === "horas"}
+                            disabled={effectiveTipo === "horas"}
+                            className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
                           />
                         </td>
                         <td className="px-2 py-1">
@@ -922,6 +937,7 @@ const FinalizarTareoPage: React.FC = () => {
                           setHoraFin={setHoraFin}
                           tipoValor={tipoValor}
                           setTipoValor={setTipoValor}
+                          tipoLocked={tipoLocked}
                           valorInput={valorInput}
                           setValorInput={setValorInput}
                           prorratear={prorratear}
@@ -981,7 +997,9 @@ const FinalizarTareoPage: React.FC = () => {
                                             }
                                           }}
                                           onFocus={(e) => e.target.select()}
-                                          className="border rounded px-2 py-1 w-full text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500"
+                                          readOnly={effectiveTipo === "kilos"}
+                                          disabled={effectiveTipo === "kilos"}
+                                          className="border rounded px-2 py-1 w-full text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
                                         />
                                       </div>
                                       <div>
@@ -1014,7 +1032,9 @@ const FinalizarTareoPage: React.FC = () => {
                                             }
                                           }}
                                           onFocus={(e) => e.target.select()}
-                                          className="border rounded px-2 py-1 w-full text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500"
+                                          readOnly={effectiveTipo === "horas"}
+                                          disabled={effectiveTipo === "horas"}
+                                          className="border rounded px-2 py-1 w-full text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
                                         />
                                       </div>
                                     </div>

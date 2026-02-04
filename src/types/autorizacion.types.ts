@@ -21,6 +21,7 @@ export interface PendienteAutorizacion {
   hora_fin?: string;              // formato esperado: "HH:mm" o "HH:mm:ss"
   observacion?: string;           // observación general
   detalle_observacion?: string;   // observación específica de trabajador
+  cos_costeo?: string;            // "02" = solo kilos, "03" = solo horas, otro = elegible
   fecha_autorizacion: string;
   observacion_autorizacion?: string;         
 }

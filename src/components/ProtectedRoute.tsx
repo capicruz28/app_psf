@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requiredRole, children }) => {
-  const { isAuthenticated, loading, hasRole } = useAuth();
+  const { isAuthenticated, loading, hasRole, auth } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -28,7 +28,24 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requiredRole, children 
   if (requiredRole) {
     // Usar la función hasRole del contexto que ya maneja SuperAdministrador
     const hasRequiredRole = hasRole(requiredRole);
+    
+    // Logging para depuración
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 ProtectedRoute check:', {
+        path: location.pathname,
+        requiredRole: requiredRole,
+        userRoles: auth.user?.roles || [],
+        hasRequiredRole: hasRequiredRole,
+        isAuthenticated: isAuthenticated
+      });
+    }
+    
     if (!hasRequiredRole) {
+      console.warn('⚠️ Access denied - redirecting to /unauthorized:', {
+        path: location.pathname,
+        requiredRole: requiredRole,
+        userRoles: auth.user?.roles || []
+      });
       return <Navigate to="/unauthorized" replace />;
     }
   }

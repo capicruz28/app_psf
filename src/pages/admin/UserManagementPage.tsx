@@ -114,10 +114,27 @@ const UserManagementPage: React.FC = () => {
     setError(null);
     try {
       const data: PaginatedUsersResponse = await getUsers(page, limitPerPage, search || undefined);
+      console.log('📊 Respuesta del backend:', {
+        usuarios_recibidos: data.usuarios.length,
+        total_usuarios: data.total_usuarios,
+        pagina_actual: data.pagina_actual,
+        total_paginas: data.total_paginas,
+        limit_per_page: limitPerPage,
+        page_solicitada: page
+      });
+      
+      // Validación: detectar discrepancias entre total reportado y usuarios devueltos
+      if (data.total_usuarios > 0 && data.usuarios.length === 0 && page <= data.total_paginas) {
+        console.warn('⚠️ Advertencia: El backend reporta usuarios pero no devuelve ninguno en esta página');
+      }
+      
       setUsers(data.usuarios);
       setTotalPages(data.total_paginas);
       setTotalUsers(data.total_usuarios);
-      setCurrentPage(data.pagina_actual);
+      // Solo actualizar currentPage si el backend devuelve una página válida
+      if (data.pagina_actual && data.pagina_actual > 0) {
+        setCurrentPage(data.pagina_actual);
+      }
     } catch (err) {
       console.error('Error in fetchUsers:', err);
       const errorData = getErrorMessage(err);
@@ -148,11 +165,13 @@ const UserManagementPage: React.FC = () => {
   // Carga de usuarios con guards de auth
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
-    const pageToFetch = debouncedSearchTerm !== searchTerm ? 1 : currentPage;
+    // Si el término de búsqueda cambió (después del debounce), resetear a página 1
     if (debouncedSearchTerm !== searchTerm) {
       setCurrentPage(1);
+      fetchUsers(1, debouncedSearchTerm);
+    } else {
+      fetchUsers(currentPage, debouncedSearchTerm);
     }
-    fetchUsers(pageToFetch, debouncedSearchTerm);
   }, [debouncedSearchTerm, currentPage, fetchUsers, searchTerm, authLoading, isAuthenticated]);
 
   // Carga de roles al montar con guards de auth
@@ -633,7 +652,7 @@ const UserManagementPage: React.FC = () => {
       )}
 
       {/* Paginación */}
-      {!isLoading && !authLoading && !error && totalUsers > limitPerPage && (
+      {!isLoading && !authLoading && !error && totalPages > 1 && (
         <div className="py-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 mt-4">
           <div>
             <p className="text-sm text-gray-700 dark:text-gray-300">

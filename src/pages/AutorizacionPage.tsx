@@ -521,6 +521,7 @@ const AutorizacionPage: React.FC = () => {
               placeholder="Ingrese el motivo del rechazo..."
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white text-sm"
+              style={{ textTransform: 'uppercase' }}
             />
             <div className="flex justify-end gap-3 mt-6">
               <button
@@ -559,6 +560,7 @@ const AutorizacionPage: React.FC = () => {
               placeholder="Ingrese el motivo del rechazo..."
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white text-sm"
+              style={{ textTransform: 'uppercase' }}
             />
             <div className="flex justify-end gap-3 mt-6">
               <button
