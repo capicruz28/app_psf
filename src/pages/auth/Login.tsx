@@ -115,11 +115,12 @@ const Login: React.FC = () => { // Añadir tipo explícito React.FC
             // Si es admin, redirigir a la página principal de admin
             destination = adminHome;
             console.log('✅ Admin user detected, navigating to', destination);
+          } else if (userRoles.length === 0) {
+            // Usuario sin roles: siempre a /home (no puede acceder a rutas operativas)
+            destination = defaultHome;
+            console.log('ℹ️ User with no roles - redirecting to', destination);
           } else {
-            // Si no es admin, redirigir a la página de origen ('from') solo si es válida,
-            // de lo contrario, redirigir a la página principal por defecto.
-            // IMPORTANTE: Si el usuario viene de /unauthorized, siempre ir a /home
-            // porque significa que antes no tenía roles y ahora sí los tiene
+            // Si no es admin pero tiene roles, redirigir a la página de origen ('from') solo si es válida
             destination = shouldIgnoreFrom ? defaultHome : from;
             console.log(`ℹ️ Normal user detected, navigating to ${destination} (from: ${from}, ignored: ${shouldIgnoreFrom})`);
           }

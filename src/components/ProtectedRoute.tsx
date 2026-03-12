@@ -3,6 +3,9 @@ import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+/** Rutas que requieren al menos un rol asignado (usuarios sin roles no pueden acceder) */
+const ROUTES_REQUIRING_ANY_ROLE = ['/finalizartareo', '/autorizacion', '/reportedestajo'];
+
 interface ProtectedRouteProps {
   requiredRole?: string;
   children?: React.ReactNode;
@@ -11,6 +14,7 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requiredRole, children }) => {
   const { isAuthenticated, loading, hasRole, auth } = useAuth();
   const location = useLocation();
+  const currentPath = location.pathname;
 
   if (loading) {
     return (
@@ -46,6 +50,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requiredRole, children 
         requiredRole: requiredRole,
         userRoles: auth.user?.roles || []
       });
+      return <Navigate to="/unauthorized" replace />;
+    }
+  }
+
+  // Rutas operativas requieren al menos un rol asignado (usuarios nuevos sin roles no pueden acceder)
+  if (!requiredRole && ROUTES_REQUIRING_ANY_ROLE.some((r) => currentPath === r || currentPath.startsWith(r + '/'))) {
+    const isSuperAdminByUsername = auth.user?.nombre_usuario?.toLowerCase() === 'superadmin';
+    const hasAnyRole = isSuperAdminByUsername || (auth.user?.roles?.length ?? 0) > 0;
+    if (!hasAnyRole) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⚠️ User has no roles - redirecting to /unauthorized for path:', currentPath);
+      }
       return <Navigate to="/unauthorized" replace />;
     }
   }

@@ -41,17 +41,32 @@ const sortData = (data: PendienteAutorizacion[]): PendienteAutorizacion[] => {
 interface DetalleEditable {
   cod_trabajador: string;
   trabajador: string;
+  hora_inicio: string;
+  hora_fin: string;
   horas: number;
   kilos: number;
   detalle_observacion: string;
 }
 
-// Componente separado para el formulario móvil para evitar re-renders
+/** Calcula diferencia en horas entre hora_inicio y hora_fin (formato HH:mm, 24h).
+ * Maneja cruce de medianoche: 20:00 → 07:00 = 11h, 06:00 → 16:00 = 10h.
+ * Retorna null si formato inválido. */
+function calcularDiferenciaHoras(horaInicio: string, horaFin: string): number | null {
+  if (!horaInicio || !horaFin || !/^([0-1]\d|2[0-3]):([0-5]\d)$/.test(horaInicio) || !/^([0-1]\d|2[0-3]):([0-5]\d)$/.test(horaFin)) {
+    return null;
+  }
+  const [hI, mI] = horaInicio.split(":").map(Number);
+  const [hF, mF] = horaFin.split(":").map(Number);
+  const minutosInicio = hI * 60 + mI;
+  let minutosFin = hF * 60 + mF;
+  if (minutosFin < minutosInicio) {
+    minutosFin += 24 * 60; // cruce medianoche
+  }
+  return Math.round((minutosFin - minutosInicio) / 60 * 100) / 100;
+}
+
+// Componente separado para el formulario móvil (solo prorrateo - se muestra cuando effectiveTipo === "kilos")
 const MobileFormSection = React.memo(({
-  horaInicio,
-  setHoraInicio,
-  horaFin,
-  setHoraFin,
   tipoValor,
   setTipoValor,
   tipoLocked,
@@ -65,10 +80,6 @@ const MobileFormSection = React.memo(({
   showFormMobile,
   setShowFormMobile
 }: {
-  horaInicio: string;
-  setHoraInicio: (value: string) => void;
-  horaFin: string;
-  setHoraFin: (value: string) => void;
   tipoValor: "horas" | "kilos";
   setTipoValor: (value: "horas" | "kilos") => void;
   tipoLocked: boolean;
@@ -82,19 +93,6 @@ const MobileFormSection = React.memo(({
   showFormMobile: boolean;
   setShowFormMobile: (value: boolean) => void;
 }) => {
-  const formatearHora = (value: string): string => {
-    let val = value.replace(/\D/g, "");
-    if (val.length > 4) val = val.slice(0, 4);
-    if (val.length > 2) {
-      val = val.slice(0, 2) + ":" + val.slice(2);
-    }
-    return val;
-  };
-
-  const validarHora = (hora: string): boolean => {
-    return /^([0-1]\d|2[0-3]):([0-5]\d)$/.test(hora);
-  };
-
   return (
     <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
       <button
@@ -111,50 +109,6 @@ const MobileFormSection = React.memo(({
       {showFormMobile && (
         <div className="mt-3 space-y-3">
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-gray-700 dark:text-gray-300 font-semibold">Hora Inicio</label>
-                <input
-                  type="text"
-                  value={horaInicio}
-                  onChange={(e) => {
-                    const formatted = formatearHora(e.target.value);
-                    setHoraInicio(formatted);
-                  }}
-                  onBlur={() => {
-                    if (horaInicio && !validarHora(horaInicio)) {
-                      toast.error("Hora de inicio inválida. Use formato HH:mm (00:00 - 23:59)");
-                      setHoraInicio("");
-                    }
-                  }}
-                  onFocus={(e) => e.target.select()}
-                  placeholder="HH:mm"
-                  maxLength={5}
-                  className="border rounded w-full p-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-700 dark:text-gray-300 font-semibold">Hora Fin</label>
-                <input
-                  type="text"
-                  value={horaFin}
-                  onChange={(e) => {
-                    const formatted = formatearHora(e.target.value);
-                    setHoraFin(formatted);
-                  }}
-                  onBlur={() => {
-                    if (horaFin && !validarHora(horaFin)) {
-                      toast.error("Hora de fin inválida. Use formato HH:mm (00:00 - 23:59)");
-                      setHoraFin("");
-                    }
-                  }}
-                  onFocus={(e) => e.target.select()}
-                  placeholder="HH:mm"
-                  maxLength={5}
-                  className="border rounded w-full p-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-            </div>
             <div className="grid grid-cols-3 gap-2 items-center">
               <div>
                 <label className="text-xs text-gray-700 dark:text-gray-300 font-semibold">Tipo</label>
@@ -224,8 +178,6 @@ const FinalizarTareoPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [horaInicio, setHoraInicio] = useState("");
-  const [horaFin, setHoraFin] = useState("");
   const [tipoValor, setTipoValor] = useState<"horas" | "kilos">("horas");
   const [valorInput, setValorInput] = useState<number>(0);
   const [prorratear, setProrratear] = useState(false);
@@ -320,6 +272,21 @@ const FinalizarTareoPage: React.FC = () => {
     });
   }, []);
 
+  /** Recalcula el campo horas de una fila según hora_inicio y hora_fin. Validación: máx 24h. */
+  const recalcularHorasFila = useCallback((idx: number) => {
+    setDetalleEditable((prev) => {
+      const row = prev[idx];
+      if (!row) return prev;
+      const diff = calcularDiferenciaHoras(row.hora_inicio, row.hora_fin);
+      if (diff === null) return prev;
+      if (diff > 24) {
+        toast.error("La diferencia entre hora inicio y fin no puede superar 24 horas.");
+        return prev;
+      }
+      return prev.map((r, i) => i === idx ? { ...r, horas: Number(diff.toFixed(2)) } : r);
+    });
+  }, []);
+
   useEffect(() => {
     // No hacer llamadas si es superadmin o no tiene codigo_trabajador_externo
     const isSuperAdmin = auth.user?.nombre_usuario?.toLowerCase() === 'superadmin';
@@ -367,13 +334,13 @@ const FinalizarTareoPage: React.FC = () => {
   useEffect(() => {
     if (detalle.length > 0) {
       const first = detalle[0];
-      setHoraInicio(extraerHora(first.hora_inicio));
-      setHoraFin(extraerHora(first.hora_fin));
       setObservacion(first.observacion || "");
       setDetalleEditable(
         detalle.map((d) => ({
           cod_trabajador: d.cod_trabajador,
           trabajador: d.trabajador,
+          hora_inicio: extraerHora(d.hora_inicio),
+          hora_fin: extraerHora(d.hora_fin),
           horas: d.horas,
           kilos: d.kilos,
           detalle_observacion: d.detalle_observacion || "",
@@ -382,8 +349,6 @@ const FinalizarTareoPage: React.FC = () => {
       if (first.cos_costeo === "02") setTipoValor("kilos");
       else if (first.cos_costeo === "03") setTipoValor("horas");
     } else {
-      setHoraInicio("");
-      setHoraFin("");
       setObservacion("");
       setDetalleEditable([]);
     }
@@ -427,15 +392,22 @@ const FinalizarTareoPage: React.FC = () => {
 
   const handleGuardar = async () => {
     if (!selectedRow || detalleEditable.length === 0) return;
-    if (horaInicio && !validarHora(horaInicio)) {
-      toast.error("Hora de inicio inválida. Use formato HH:mm (00:00 - 23:59)");
-      return;
-    }
-    if (horaFin && !validarHora(horaFin)) {
-      toast.error("Hora de fin inválida. Use formato HH:mm (00:00 - 23:59)");
-      return;
-    }
     for (const item of detalleEditable) {
+      if (item.hora_inicio && !validarHora(item.hora_inicio)) {
+        toast.error(`Hora de inicio inválida para ${item.trabajador}. Use formato HH:mm (00:00 - 23:59)`);
+        return;
+      }
+      if (item.hora_fin && !validarHora(item.hora_fin)) {
+        toast.error(`Hora de fin inválida para ${item.trabajador}. Use formato HH:mm (00:00 - 23:59)`);
+        return;
+      }
+      if (effectiveTipo === "horas" && item.hora_inicio && item.hora_fin) {
+        const diff = calcularDiferenciaHoras(item.hora_inicio, item.hora_fin);
+        if (diff !== null && diff > 24) {
+          toast.error(`La diferencia de horas para ${item.trabajador} no puede superar 24 horas.`);
+          return;
+        }
+      }
       if (item.horas > 0 && item.kilos > 0) {
         toast.error(`El trabajador ${item.trabajador} tiene valores en Horas y Kilos a la vez.`);
         return;
@@ -454,8 +426,8 @@ const FinalizarTareoPage: React.FC = () => {
           cod_proceso: selectedRow.cod_proceso!,
           cod_subproceso: selectedRow.cod_subproceso,
           cod_trabajador: item.cod_trabajador,
-          hora_inicio: horaInicio || undefined,
-          hora_fin: horaFin || undefined,
+          hora_inicio: item.hora_inicio || undefined,
+          hora_fin: item.hora_fin || undefined,
           horas: item.horas,
           kilos: item.kilos,
           observacion: observacion || undefined,
@@ -617,59 +589,10 @@ const FinalizarTareoPage: React.FC = () => {
         )}
 
         {selectedRow && (
-          <div className="grid grid-cols-1 md:grid-cols-10 gap-4">
+          <div className={`grid grid-cols-1 gap-4 ${effectiveTipo === "kilos" ? "md:grid-cols-10" : "md:grid-cols-1"}`}>
+            {effectiveTipo === "kilos" && (
             <div className="col-span-3 border rounded-lg p-4 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm text-gray-700 dark:text-gray-300 font-semibold">Hora Inicio</label>
-                    <input
-                      type="text"
-                      value={horaInicio}
-                      onChange={(e) => {
-                        const formatted = formatearHora(e.target.value);
-                        setHoraInicio(formatted);
-                      }}
-                      onBlur={() => {
-                        if (horaInicio && !validarHora(horaInicio)) {
-                          toast.error("Hora de inicio inválida. Use formato HH:mm (00:00 - 23:59)");
-                          setHoraInicio("");
-                        }
-                      }}
-                      onMouseDown={(e) => {
-                        const target = e.currentTarget;
-                        setTimeout(() => target.select(), 0);
-                      }}
-                      placeholder="HH:mm"
-                      maxLength={5}
-                      className="border rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-700 dark:text-gray-300 font-semibold">Hora Fin</label>
-                    <input
-                      type="text"
-                      value={horaFin}
-                      onChange={(e) => {
-                        const formatted = formatearHora(e.target.value);
-                        setHoraFin(formatted);
-                      }}
-                      onBlur={() => {
-                        if (horaFin && !validarHora(horaFin)) {
-                          toast.error("Hora de fin inválida. Use formato HH:mm (00:00 - 23:59)");
-                          setHoraFin("");
-                        }
-                      }}
-                      onMouseDown={(e) => {
-                        const target = e.currentTarget;
-                        setTimeout(() => target.select(), 0);
-                      }}
-                      placeholder="HH:mm"
-                      maxLength={5}
-                      className="border rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-                </div>
                 <div className="grid grid-cols-3 gap-2 items-center">
                   <div>
                     <label className="text-sm text-gray-700 dark:text-gray-300 font-semibold">Tipo</label>
@@ -735,8 +658,22 @@ const FinalizarTareoPage: React.FC = () => {
                 </button>
               </div>
             </div>
+            )}
 
-            <div className="col-span-7">
+            <div className={effectiveTipo === "kilos" ? "col-span-7" : "col-span-1"}>
+              {effectiveTipo === "horas" && (
+                <div className="mb-3">
+                  <label className="text-sm text-gray-700 dark:text-gray-300 font-semibold">Observación General</label>
+                  <textarea
+                    rows={2}
+                    value={observacion}
+                    onChange={(e) => setObservacion(e.target.value)}
+                    className="border rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 mt-1"
+                    placeholder="Ingrese observación..."
+                    style={{ textTransform: 'uppercase' }}
+                  />
+                </div>
+              )}
               <div className="bg-indigo-600 text-white px-4 py-2 rounded-t-lg">
                 <h3 className="font-semibold text-sm">
                   Detalle seleccionado → Fecha Destajo: {formatDateYYYYMMDD(selectedRow.fecha_destajo)} | 
@@ -753,90 +690,123 @@ const FinalizarTareoPage: React.FC = () => {
                     <tr>
                       <th className="px-2 py-1 text-left text-table-header">Cod Trabajador</th>
                       <th className="px-2 py-1 text-left text-table-header">Trabajador</th>
-                      <th className="px-2 py-1 text-left text-table-header">Horas</th>
-                      <th className="px-2 py-1 text-left text-table-header">Kilos</th>
+                      {effectiveTipo === "horas" && (
+                        <>
+                          <th className="px-2 py-1 text-left text-table-header">Hora Inicio</th>
+                          <th className="px-2 py-1 text-left text-table-header">Hora Fin</th>
+                        </>
+                      )}
+                      {effectiveTipo === "horas" && <th className="px-2 py-1 text-left text-table-header">Horas</th>}
+                      {effectiveTipo === "kilos" && <th className="px-2 py-1 text-left text-table-header">Kilos</th>}
                       <th className="px-2 py-1 text-left text-table-header">Obs. Detalle</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                    {detalleEditable.map((d, i) => (
+                    {detalleEditable.map((d, i) => {
+                      const diffHoras = effectiveTipo === "horas" ? calcularDiferenciaHoras(d.hora_inicio, d.hora_fin) : null;
+                      const excede24 = diffHoras !== null && diffHoras > 24;
+                      const horasCorrectas = diffHoras !== null && diffHoras <= 24 && Math.abs((d.horas || 0) - diffHoras) < 0.01;
+                      return (
                       <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                         <td className="px-2 py-1 text-table-cell">{d.cod_trabajador}</td>
                         <td className="px-2 py-1 text-table-cell">{d.trabajador}</td>
-                        <td className="px-2 py-1">
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={d.horas}
-                            onChange={(e) =>
-                              setDetalleEditable((prev) =>
-                                prev.map((row, idx) =>
-                                  idx === i ? { ...row, horas: Number(e.target.value) } : row
-                                )
-                              )
-                            }
-                            onBlur={() =>
-                              setDetalleEditable((prev) =>
-                                prev.map((row, idx) =>
-                                  idx === i ? { ...row, kilos: row.horas > 0 ? 0 : row.kilos } : row
-                                )
-                              )
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
+                        {effectiveTipo === "horas" && (
+                          <>
+                            <td className="px-2 py-1">
+                              <input
+                                type="text"
+                                value={d.hora_inicio}
+                                onChange={(e) => {
+                                  const formatted = formatearHora(e.target.value);
+                                  setDetalleEditable((prev) =>
+                                    prev.map((row, idx) =>
+                                      idx === i ? { ...row, hora_inicio: formatted } : row
+                                    )
+                                  );
+                                }}
+                                onBlur={() => {
+                                  if (d.hora_inicio && !validarHora(d.hora_inicio)) {
+                                    toast.error("Hora de inicio inválida. Use formato HH:mm");
+                                  } else {
+                                    recalcularHorasFila(i);
+                                  }
+                                }}
+                                onMouseDown={(e) => { setTimeout(() => e.currentTarget.select(), 0); }}
+                                placeholder="HH:mm"
+                                maxLength={5}
+                                className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 text-sm"
+                              />
+                            </td>
+                            <td className="px-2 py-1">
+                              <input
+                                type="text"
+                                value={d.hora_fin}
+                                onChange={(e) => {
+                                  const formatted = formatearHora(e.target.value);
+                                  setDetalleEditable((prev) =>
+                                    prev.map((row, idx) =>
+                                      idx === i ? { ...row, hora_fin: formatted } : row
+                                    )
+                                  );
+                                }}
+                                onBlur={() => {
+                                  if (d.hora_fin && !validarHora(d.hora_fin)) {
+                                    toast.error("Hora de fin inválida. Use formato HH:mm");
+                                  } else {
+                                    recalcularHorasFila(i);
+                                  }
+                                }}
+                                onMouseDown={(e) => { setTimeout(() => e.currentTarget.select(), 0); }}
+                                placeholder="HH:mm"
+                                maxLength={5}
+                                className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 text-sm"
+                              />
+                            </td>
+                            <td className="px-2 py-1">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={d.horas}
+                                onChange={(e) =>
+                                  setDetalleEditable((prev) =>
+                                    prev.map((row, idx) =>
+                                      idx === i ? { ...row, horas: Number(e.target.value) } : row
+                                    )
+                                  )
+                                }
+                                onMouseDown={(e) => {
+                                  const target = e.currentTarget;
+                                  setTimeout(() => target.select(), 0);
+                                }}
+                                className={`border rounded px-2 py-1 w-full text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 ${
+                                  diffHoras !== null
+                                    ? excede24 || !horasCorrectas
+                                      ? "bg-red-100 dark:bg-red-900/40 border-red-500"
+                                      : "bg-green-100 dark:bg-green-900/40 border-green-500"
+                                    : "bg-white dark:bg-gray-700"
+                                }`}
+                              />
+                            </td>
+                          </>
+                        )}
+                        {effectiveTipo === "kilos" && (
+                          <td className="px-2 py-1">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={d.kilos}
+                              onChange={(e) =>
                                 setDetalleEditable((prev) =>
                                   prev.map((row, idx) =>
-                                    idx === i ? { ...row, kilos: row.horas > 0 ? 0 : row.kilos } : row
+                                    idx === i ? { ...row, kilos: Number(e.target.value) } : row
                                   )
-                                );
-                              }
-                            }}
-                            onMouseDown={(e) => {
-                              const target = e.currentTarget;
-                              setTimeout(() => target.select(), 0);
-                            }}
-                            readOnly={effectiveTipo === "kilos"}
-                            disabled={effectiveTipo === "kilos"}
-                            className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                          />
-                        </td>
-                        <td className="px-2 py-1">
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={d.kilos}
-                            onChange={(e) =>
-                              setDetalleEditable((prev) =>
-                                prev.map((row, idx) =>
-                                  idx === i ? { ...row, kilos: Number(e.target.value) } : row
                                 )
-                              )
-                            }
-                            onBlur={() =>
-                              setDetalleEditable((prev) =>
-                                prev.map((row, idx) =>
-                                  idx === i ? { ...row, horas: row.kilos > 0 ? 0 : row.horas } : row
-                                )
-                              )
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                setDetalleEditable((prev) =>
-                                  prev.map((row, idx) =>
-                                    idx === i ? { ...row, horas: row.kilos > 0 ? 0 : row.horas } : row
-                                  )
-                                );
                               }
-                            }}
-                            onMouseDown={(e) => {
-                              const target = e.currentTarget;
-                              setTimeout(() => target.select(), 0);
-                            }}
-                            readOnly={effectiveTipo === "horas"}
-                            disabled={effectiveTipo === "horas"}
-                            className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                          />
-                        </td>
+                              onMouseDown={(e) => { setTimeout(() => e.currentTarget.select(), 0); }}
+                              className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </td>
+                        )}
                         <td className="px-2 py-1">
                           <input
                             type="text"
@@ -858,7 +828,8 @@ const FinalizarTareoPage: React.FC = () => {
                           />
                         </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -930,11 +901,21 @@ const FinalizarTareoPage: React.FC = () => {
 
                     {isSelected && (
                       <>
+                        {effectiveTipo === "horas" && (
+                          <div className="mb-3">
+                            <label className="text-xs text-gray-700 dark:text-gray-300 font-semibold">Observación General</label>
+                            <textarea
+                              rows={2}
+                              value={observacion}
+                              onChange={(e) => setObservacion(e.target.value)}
+                              className="border rounded w-full p-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white mt-1"
+                              placeholder="Ingrese observación..."
+                              style={{ textTransform: 'uppercase' }}
+                            />
+                          </div>
+                        )}
+                        {effectiveTipo === "kilos" && (
                         <MobileFormSection
-                          horaInicio={horaInicio}
-                          setHoraInicio={setHoraInicio}
-                          horaFin={horaFin}
-                          setHoraFin={setHoraFin}
                           tipoValor={tipoValor}
                           setTipoValor={setTipoValor}
                           tipoLocked={tipoLocked}
@@ -948,6 +929,7 @@ const FinalizarTareoPage: React.FC = () => {
                           showFormMobile={showFormMobile}
                           setShowFormMobile={setShowFormMobile}
                         />
+                        )}
 
                         {detalleEditable.length > 0 && (
                           <div>
@@ -961,49 +943,97 @@ const FinalizarTareoPage: React.FC = () => {
 
                             {isExpanded && (
                               <div className="mt-2 space-y-2 max-h-96 overflow-y-auto">
-                                {detalleEditable.map((d, i) => (
+                                {detalleEditable.map((d, i) => {
+                                  const diffHoras = effectiveTipo === "horas" ? calcularDiferenciaHoras(d.hora_inicio, d.hora_fin) : null;
+                                  const excede24 = diffHoras !== null && diffHoras > 24;
+                                  const horasCorrectas = diffHoras !== null && diffHoras <= 24 && Math.abs((d.horas || 0) - diffHoras) < 0.01;
+                                  return (
                                   <div key={i} className="bg-gray-50 dark:bg-gray-700/50 rounded-md p-3 text-sm border border-gray-200 dark:border-gray-600 space-y-2">
                                     <div className="font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-600 pb-2">
                                       {d.cod_trabajador} - {d.trabajador}
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                      <div>
-                                        <label className="text-xs text-gray-500 dark:text-gray-400">Horas:</label>
-                                        <input
-                                          type="number"
-                                          step="0.01"
-                                          value={d.horas}
-                                          onChange={(e) =>
-                                            setDetalleEditable((prev) =>
-                                              prev.map((row, idx) =>
-                                                idx === i ? { ...row, horas: Number(e.target.value) } : row
-                                              )
-                                            )
-                                          }
-                                          onBlur={() =>
-                                            setDetalleEditable((prev) =>
-                                              prev.map((row, idx) =>
-                                                idx === i ? { ...row, kilos: row.horas > 0 ? 0 : row.kilos } : row
-                                              )
-                                            )
-                                          }
-                                          onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
+                                    {effectiveTipo === "horas" && (
+                                      <div className="grid grid-cols-3 gap-2">
+                                        <div>
+                                          <label className="text-xs text-gray-500 dark:text-gray-400">Hora Inicio</label>
+                                          <input
+                                            type="text"
+                                            value={d.hora_inicio}
+                                            onChange={(e) => {
+                                              const formatted = formatearHora(e.target.value);
                                               setDetalleEditable((prev) =>
                                                 prev.map((row, idx) =>
-                                                  idx === i ? { ...row, kilos: row.horas > 0 ? 0 : row.kilos } : row
+                                                  idx === i ? { ...row, hora_inicio: formatted } : row
                                                 )
                                               );
+                                            }}
+                                            onBlur={() => {
+                                              if (d.hora_inicio && !validarHora(d.hora_inicio)) {
+                                                toast.error("Hora de inicio inválida. Use formato HH:mm");
+                                              } else {
+                                                recalcularHorasFila(i);
+                                              }
+                                            }}
+                                            placeholder="HH:mm"
+                                            maxLength={5}
+                                            onFocus={(e) => e.target.select()}
+                                            className="border rounded px-2 py-1 w-full text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="text-xs text-gray-500 dark:text-gray-400">Hora Fin</label>
+                                          <input
+                                            type="text"
+                                            value={d.hora_fin}
+                                            onChange={(e) => {
+                                              const formatted = formatearHora(e.target.value);
+                                              setDetalleEditable((prev) =>
+                                                prev.map((row, idx) =>
+                                                  idx === i ? { ...row, hora_fin: formatted } : row
+                                                )
+                                              );
+                                            }}
+                                            onBlur={() => {
+                                              if (d.hora_fin && !validarHora(d.hora_fin)) {
+                                                toast.error("Hora de fin inválida. Use formato HH:mm");
+                                              } else {
+                                                recalcularHorasFila(i);
+                                              }
+                                            }}
+                                            placeholder="HH:mm"
+                                            maxLength={5}
+                                            onFocus={(e) => e.target.select()}
+                                            className="border rounded px-2 py-1 w-full text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="text-xs text-gray-500 dark:text-gray-400">Horas</label>
+                                          <input
+                                            type="number"
+                                            step="0.01"
+                                            value={d.horas}
+                                            onChange={(e) =>
+                                              setDetalleEditable((prev) =>
+                                                prev.map((row, idx) =>
+                                                  idx === i ? { ...row, horas: Number(e.target.value) } : row
+                                                )
+                                              )
                                             }
-                                          }}
-                                          onFocus={(e) => e.target.select()}
-                                          readOnly={effectiveTipo === "kilos"}
-                                          disabled={effectiveTipo === "kilos"}
-                                          className="border rounded px-2 py-1 w-full text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                                        />
+                                            onFocus={(e) => e.target.select()}
+                                            className={`border rounded px-2 py-1 w-full text-sm text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 ${
+                                              diffHoras !== null
+                                                ? excede24 || !horasCorrectas
+                                                  ? "bg-red-100 dark:bg-red-900/40 border-red-500"
+                                                  : "bg-green-100 dark:bg-green-900/40 border-green-500"
+                                                : "bg-white dark:bg-gray-700"
+                                            }`}
+                                          />
+                                        </div>
                                       </div>
+                                    )}
+                                    {effectiveTipo === "kilos" && (
                                       <div>
-                                        <label className="text-xs text-gray-500 dark:text-gray-400">Kilos:</label>
+                                        <label className="text-xs text-gray-500 dark:text-gray-400">Kilos</label>
                                         <input
                                           type="number"
                                           step="0.01"
@@ -1015,29 +1045,11 @@ const FinalizarTareoPage: React.FC = () => {
                                               )
                                             )
                                           }
-                                          onBlur={() =>
-                                            setDetalleEditable((prev) =>
-                                              prev.map((row, idx) =>
-                                                idx === i ? { ...row, horas: row.kilos > 0 ? 0 : row.horas } : row
-                                              )
-                                            )
-                                          }
-                                          onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                              setDetalleEditable((prev) =>
-                                                prev.map((row, idx) =>
-                                                  idx === i ? { ...row, horas: row.kilos > 0 ? 0 : row.horas } : row
-                                                )
-                                              );
-                                            }
-                                          }}
                                           onFocus={(e) => e.target.select()}
-                                          readOnly={effectiveTipo === "horas"}
-                                          disabled={effectiveTipo === "horas"}
-                                          className="border rounded px-2 py-1 w-full text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                                          className="border rounded px-2 py-1 w-full text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500"
                                         />
                                       </div>
-                                    </div>
+                                    )}
                                     <div>
                                       <label className="text-xs text-gray-500 dark:text-gray-400">Observación:</label>
                                       <input
@@ -1057,7 +1069,8 @@ const FinalizarTareoPage: React.FC = () => {
                                       />
                                     </div>
                                   </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
