@@ -149,15 +149,17 @@ const ReporteAutorizacionPage: React.FC = () => {
     setProcessing(true);
 
     try {
+      // Clave única de cabecera: mismo conjunto que filtro detalle (incluye estado para no mezclar A/R/P)
+      const cabeceraKey = (item: PendienteAutorizacion) =>
+        `${item.fecha_destajo}_${item.cod_producto}_${item.cod_subproceso || ""}_${item.cod_cliente}_${item.lote}_${item.cod_proceso}_${item.estado_autorizado}`;
+
       // Procesar cabeceras en chunks para no bloquear UI
       const cabeceras = await processDataInChunks(
         data,
         (chunk) => {
           const map = new Map<string, PendienteAutorizacion>();
           chunk.forEach(item => {
-            const key = `${item.fecha_destajo}_${item.cod_producto}_${
-              item.cod_subproceso || ""
-            }_${item.cod_cliente}_${item.lote}_${item.cod_proceso}`;
+            const key = cabeceraKey(item);
             if (!map.has(key)) map.set(key, item);
           });
           return sortData(Array.from(map.values()));
@@ -166,10 +168,7 @@ const ReporteAutorizacionPage: React.FC = () => {
 
       // Eliminar duplicados finales
       const uniqueCabeceras = Array.from(
-        new Map(cabeceras.map(item => [
-          `${item.fecha_destajo}_${item.cod_producto}_${item.cod_subproceso || ""}_${item.cod_cliente}_${item.lote}_${item.cod_proceso}`,
-          item
-        ])).values()
+        new Map(cabeceras.map(item => [cabeceraKey(item), item])).values()
       );
 
       // Calcular KPIs de forma eficiente
@@ -234,17 +233,43 @@ const ReporteAutorizacionPage: React.FC = () => {
 
   const totalPages = Math.ceil(filteredCabeceras.length / itemsPerPage);
 
-  // Detalle optimizado - solo buscar cuando es necesario
+  // Deduplica por cod_trabajador quedándose con la fila de fecha_autorizacion más reciente (evita duplicados por historial R→A)
+  const deduplicarDetallePorTrabajador = useCallback((filas: PendienteAutorizacion[]): PendienteAutorizacion[] => {
+    const porTrabajador = new Map<string, PendienteAutorizacion>();
+    const ordenado = [...filas].sort(
+      (a, b) => new Date(b.fecha_autorizacion || 0).getTime() - new Date(a.fecha_autorizacion || 0).getTime()
+    );
+    ordenado.forEach((p) => {
+      if (!porTrabajador.has(p.cod_trabajador)) porTrabajador.set(p.cod_trabajador, p);
+    });
+    return Array.from(porTrabajador.values());
+  }, []);
+
+  // Detalle: misma clave que cabecera + deduplicado por trabajador (un registro por cod_trabajador, el más reciente)
   const detalle = useMemo(() => {
     if (!selectedRow) return [];
-    
-    return rawData.filter(p => 
-      p.lote === selectedRow.lote &&
-      p.fecha_destajo === selectedRow.fecha_destajo &&
-      p.cod_proceso === selectedRow.cod_proceso &&
-      (p.cod_subproceso || "") === (selectedRow.cod_subproceso || "")
+    const filtrado = rawData.filter(
+      (p) =>
+        p.fecha_destajo === selectedRow.fecha_destajo &&
+        p.cod_producto === selectedRow.cod_producto &&
+        (p.cod_subproceso || "") === (selectedRow.cod_subproceso || "") &&
+        p.cod_cliente === selectedRow.cod_cliente &&
+        p.lote === selectedRow.lote &&
+        p.cod_proceso === selectedRow.cod_proceso &&
+        p.estado_autorizado === selectedRow.estado_autorizado
     );
-  }, [rawData, selectedRow?.lote, selectedRow?.fecha_destajo, selectedRow?.cod_proceso, selectedRow?.cod_subproceso]);
+    return deduplicarDetallePorTrabajador(filtrado);
+  }, [
+    rawData,
+    selectedRow?.fecha_destajo,
+    selectedRow?.cod_producto,
+    selectedRow?.cod_subproceso,
+    selectedRow?.cod_cliente,
+    selectedRow?.lote,
+    selectedRow?.cod_proceso,
+    selectedRow?.estado_autorizado,
+    deduplicarDetallePorTrabajador,
+  ]);
 
   // Cargar datos con indicador de progreso
   const fetchData = useCallback(async () => {
@@ -316,15 +341,19 @@ const ReporteAutorizacionPage: React.FC = () => {
     setSelectedRow(item);
   }, []);
 
-  // Función para obtener el detalle de un item específico (para móvil)
+  // Misma clave que cabecera + deduplicado por trabajador (móvil y PDF)
   const getDetalleForItem = (item: PendienteAutorizacion) => {
-    return rawData.filter(
+    const filtrado = rawData.filter(
       (p) =>
-        p.lote === item.lote &&
         p.fecha_destajo === item.fecha_destajo &&
+        p.cod_producto === item.cod_producto &&
+        (p.cod_subproceso || "") === (item.cod_subproceso || "") &&
+        p.cod_cliente === item.cod_cliente &&
+        p.lote === item.lote &&
         p.cod_proceso === item.cod_proceso &&
-        (p.cod_subproceso || "") === (item.cod_subproceso || "")
+        p.estado_autorizado === item.estado_autorizado
     );
+    return deduplicarDetallePorTrabajador(filtrado);
   };
 
   // Función para toggle de expansión de cards en móvil
@@ -337,11 +366,15 @@ const ReporteAutorizacionPage: React.FC = () => {
   };
 
   // Función para verificar si una fila está seleccionada
-  const isRowSelected = (item: PendienteAutorizacion) => 
-    selectedRow?.lote === item.lote &&
-    selectedRow?.fecha_destajo === item.fecha_destajo &&
-    selectedRow?.cod_proceso === item.cod_proceso &&
-    (selectedRow?.cod_subproceso || "") === (item.cod_subproceso || "");
+  const isRowSelected = (item: PendienteAutorizacion) =>
+    selectedRow != null &&
+    selectedRow.fecha_destajo === item.fecha_destajo &&
+    selectedRow.cod_producto === item.cod_producto &&
+    (selectedRow.cod_subproceso || "") === (item.cod_subproceso || "") &&
+    selectedRow.cod_cliente === item.cod_cliente &&
+    selectedRow.lote === item.lote &&
+    selectedRow.cod_proceso === item.cod_proceso &&
+    selectedRow.estado_autorizado === item.estado_autorizado;
 
 // --- FUNCIONALIDAD MODIFICADA ---
 
