@@ -418,12 +418,14 @@ const generarResumenPDF = useCallback(() => {
         );
     };
 
-    // Header modificado - eliminadas las columnas Estado y Fec. Autoriz., y reordenadas
+    // Estado más reciente por fila (filteredCabeceras ya trae una fila por destajo con el más reciente)
+    const estadoLegible = (estado: string) =>
+        estado === "A" ? "Aprobado" : estado === "R" ? "Rechazado" : estado === "P" ? "Pendiente" : estado || "-";
+
     const header = [
-        ["Fecha Destajo", "Producto", "Proceso", "Subproceso", "Lote", "Cliente"],
+        ["Fecha Destajo", "Producto", "Proceso", "Subproceso", "Lote", "Cliente", "Estado"],
     ];
-    
-    // Mapear los datos filtrados con el nuevo orden de columnas
+
     const bodyData = filteredCabeceras.map((row) => [
         formatDateYYYYMMDD(row.fecha_destajo),
         `${row.cod_producto} ${row.producto}`,
@@ -431,8 +433,9 @@ const generarResumenPDF = useCallback(() => {
         row.subproceso ? `${row.cod_subproceso} ${row.subproceso}` : "-",
         row.lote,
         row.cliente,
+        estadoLegible(row.estado_autorizado),
     ]);
-    
+
     autoTable(doc, {
         startY: 30,
         theme: "grid",
@@ -441,19 +444,19 @@ const generarResumenPDF = useCallback(() => {
         margin: { top: 35, left: 10, right: 10 },
         styles: { overflow: 'linebreak', cellPadding: 1, fontSize: 8 },
         headStyles: {
-            fillColor: [68, 114, 196], 
-            textColor: [255, 255, 255], 
+            fillColor: [68, 114, 196],
+            textColor: [255, 255, 255],
             fontStyle: 'bold',
             minCellHeight: 8,
         },
         columnStyles: {
-            // Ajustar el ancho de las columnas para A4 Horizontal con nuevo orden
             0: { cellWidth: 25 }, // Fecha Destajo
             1: { cellWidth: 50 }, // Producto
             2: { cellWidth: 40 }, // Proceso
             3: { cellWidth: 40 }, // Subproceso
             4: { cellWidth: 25 }, // Lote
             5: { cellWidth: 45 }, // Cliente
+            6: { cellWidth: 22 }, // Estado
         },
         didDrawPage: addHeaderFooterResumen,
     });
