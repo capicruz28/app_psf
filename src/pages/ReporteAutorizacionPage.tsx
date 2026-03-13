@@ -149,27 +149,36 @@ const ReporteAutorizacionPage: React.FC = () => {
     setProcessing(true);
 
     try {
-      // Clave única de cabecera: mismo conjunto que filtro detalle (incluye estado para no mezclar A/R/P)
+      // Clave única de cabecera por destajo (sin estado): una fila por lote/producto/proceso/cliente; se queda con el estado más reciente por fecha_autorizacion
       const cabeceraKey = (item: PendienteAutorizacion) =>
-        `${item.fecha_destajo}_${item.cod_producto}_${item.cod_subproceso || ""}_${item.cod_cliente}_${item.lote}_${item.cod_proceso}_${item.estado_autorizado}`;
+        `${item.fecha_destajo}_${item.cod_producto}_${item.cod_subproceso || ""}_${item.cod_cliente}_${item.lote}_${item.cod_proceso}`;
 
-      // Procesar cabeceras en chunks para no bloquear UI
+      // Procesar cabeceras en chunks: por cada clave se queda la fila con fecha_autorizacion más reciente
       const cabeceras = await processDataInChunks(
         data,
         (chunk) => {
           const map = new Map<string, PendienteAutorizacion>();
           chunk.forEach(item => {
             const key = cabeceraKey(item);
-            if (!map.has(key)) map.set(key, item);
+            const actual = map.get(key);
+            if (!actual || new Date(item.fecha_autorizacion || 0).getTime() > new Date(actual.fecha_autorizacion || 0).getTime()) {
+              map.set(key, item);
+            }
           });
           return sortData(Array.from(map.values()));
         }
       );
 
-      // Eliminar duplicados finales
-      const uniqueCabeceras = Array.from(
-        new Map(cabeceras.map(item => [cabeceraKey(item), item])).values()
-      );
+      // Unificar chunks: por cada clave quedarse con la fila de fecha_autorizacion más reciente
+      const mapFinal = new Map<string, PendienteAutorizacion>();
+      cabeceras.forEach(item => {
+        const key = cabeceraKey(item);
+        const actual = mapFinal.get(key);
+        if (!actual || new Date(item.fecha_autorizacion || 0).getTime() > new Date(actual.fecha_autorizacion || 0).getTime()) {
+          mapFinal.set(key, item);
+        }
+      });
+      const uniqueCabeceras = sortData(Array.from(mapFinal.values()));
 
       // Calcular KPIs de forma eficiente
       const kpis = {
