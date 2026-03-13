@@ -151,7 +151,7 @@ const MobileFormSection = React.memo(({
               <textarea
                 rows={2}
                 value={observacion}
-                onChange={(e) => setObservacion(e.target.value)}
+                onChange={(e) => setObservacion(e.target.value.toUpperCase())}
                 onFocus={(e) => e.target.select()}
                 className="border rounded w-full p-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500"
                 placeholder="Ingrese observación..."
@@ -638,7 +638,7 @@ const FinalizarTareoPage: React.FC = () => {
                   <textarea
                     rows={2}
                     value={observacion}
-                    onChange={(e) => setObservacion(e.target.value)}
+                    onChange={(e) => setObservacion(e.target.value.toUpperCase())}
                     onMouseDown={(e) => {
                       const target = e.currentTarget;
                       setTimeout(() => target.select(), 0);
@@ -667,7 +667,7 @@ const FinalizarTareoPage: React.FC = () => {
                   <textarea
                     rows={2}
                     value={observacion}
-                    onChange={(e) => setObservacion(e.target.value)}
+                    onChange={(e) => setObservacion(e.target.value.toUpperCase())}
                     className="border rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 mt-1"
                     placeholder="Ingrese observación..."
                     style={{ textTransform: 'uppercase' }}
@@ -814,7 +814,7 @@ const FinalizarTareoPage: React.FC = () => {
                             onChange={(e) =>
                               setDetalleEditable((prev) =>
                                 prev.map((row, idx) =>
-                                  idx === i ? { ...row, detalle_observacion: e.target.value } : row
+                                  idx === i ? { ...row, detalle_observacion: e.target.value.toUpperCase() } : row
                                 )
                               )
                             }
@@ -907,7 +907,7 @@ const FinalizarTareoPage: React.FC = () => {
                             <textarea
                               rows={2}
                               value={observacion}
-                              onChange={(e) => setObservacion(e.target.value)}
+                              onChange={(e) => setObservacion(e.target.value.toUpperCase())}
                               className="border rounded w-full p-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white mt-1"
                               placeholder="Ingrese observación..."
                               style={{ textTransform: 'uppercase' }}
@@ -1058,7 +1058,7 @@ const FinalizarTareoPage: React.FC = () => {
                                         onChange={(e) =>
                                           setDetalleEditable((prev) =>
                                             prev.map((row, idx) =>
-                                              idx === i ? { ...row, detalle_observacion: e.target.value } : row
+                                              idx === i ? { ...row, detalle_observacion: e.target.value.toUpperCase() } : row
                                             )
                                           )
                                         }

@@ -517,7 +517,7 @@ const AutorizacionPage: React.FC = () => {
             </p>
             <textarea
               value={rejectObservation}
-              onChange={(e) => setRejectObservation(e.target.value)}
+              onChange={(e) => setRejectObservation(e.target.value.toUpperCase())}
               placeholder="Ingrese el motivo del rechazo..."
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white text-sm"
@@ -556,7 +556,7 @@ const AutorizacionPage: React.FC = () => {
             </p>
             <textarea
               value={rejectObservation}
-              onChange={(e) => setRejectObservation(e.target.value)}
+              onChange={(e) => setRejectObservation(e.target.value.toUpperCase())}
               placeholder="Ingrese el motivo del rechazo..."
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white text-sm"
